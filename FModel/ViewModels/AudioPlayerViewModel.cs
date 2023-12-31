@@ -283,6 +283,13 @@ public class AudioPlayerViewModel : ViewModel, ISource, IDisposable
         if (_audioFiles.Count < 1) return;
         Application.Current.Dispatcher.Invoke(() =>
         {
+            var removedPlaying = false;
+            if (PlayedFile.Id == SelectedAudioFile.Id)
+            {
+                removedPlaying = true;
+                Stop();
+            }
+
             _audioFiles.RemoveAt(SelectedAudioFile.Id);
             for (var i = 0; i < _audioFiles.Count; i++)
             {
