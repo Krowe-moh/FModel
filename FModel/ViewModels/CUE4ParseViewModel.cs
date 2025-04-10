@@ -835,6 +835,25 @@ public class CUE4ParseViewModel : ViewModel
                 TabControl.SelectedTab.AddImage(sourceFile.SubstringAfterLast('/'), false, bitmap, false, updateUi);
                 return false;
             }
+            case UAkAudioEvent when isNone && pointer.Object.Value is UAkAudioEvent { EventCookedData: { } wwiseData }:
+            {
+                foreach (var kvp in wwiseData.EventLanguageMap)
+                {
+                    if (!kvp.Value.HasValue) continue;
+
+                    foreach (var media in kvp.Value.Value.Media)
+                    {
+                        if (!Provider.TrySaveAsset(Path.Combine("Game/WwiseAudio/", media.MediaPathName.Text), out var data)) continue;
+
+                        var namedPath = string.Concat(
+                            Provider.ProjectName, "/Content/WwiseAudio/",
+                            media.DebugName.Text.SubstringBeforeLast('.').Replace('\\', '/'),
+                            " (", kvp.Key.LanguageName.Text, ")");
+                        SaveAndPlaySound(namedPath, media.MediaPathName.Text.SubstringAfterLast('.'), data);
+                    }
+                }
+                return false;
+            }
             case UAkMediaAssetData when isNone:
             case USoundWave when isNone:
             {
@@ -847,7 +866,7 @@ public class CUE4ParseViewModel : ViewModel
                     return false;
                 }
 
-                SaveAndPlaySound(Path.Combine(TabControl.SelectedTab.Entry.PathWithoutExtension).Replace('\\', '/'), audioFormat, data);
+                SaveAndPlaySound(TabControl.SelectedTab.Entry.PathWithoutExtension.Replace('\\', '/'), audioFormat, data);
                 return false;
             }
             case UWorld when isNone && UserSettings.Default.PreviewWorlds:
