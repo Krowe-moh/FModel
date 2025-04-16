@@ -843,14 +843,32 @@ public class CUE4ParseViewModel : ViewModel
 
                     foreach (var media in kvp.Value.Value.Media)
                     {
-                        if (!Provider.TrySaveAsset(Path.Combine("Game/WwiseAudio/", media.MediaPathName.Text), out var data)) continue;
+                            var mediaRelativePath = media.MediaPathName.Text.Replace('\\', '/');
+                            var projectName = string.IsNullOrEmpty(Provider.ProjectName) ? "Game" : Provider.ProjectName;
+                            var baseWwiseAudioPath = Path.Combine(projectName, "Content", "WwiseAudio");
+                            var candidatePath = Path.Combine(baseWwiseAudioPath, "Cooked", media.MediaPathName.Text);
+                            if (!Provider.TrySaveAsset(candidatePath, out byte[] data))
+                            {
+                                candidatePath = Path.Combine(baseWwiseAudioPath, mediaRelativePath);
+                                if (!Provider.TrySaveAsset(candidatePath, out data))
+                                {
+                                    continue;
+                                }
+                            }
 
-                        var namedPath = string.Concat(
-                            Provider.ProjectName, "/Content/WwiseAudio/",
-                            media.DebugName.Text.SubstringBeforeLast('.').Replace('\\', '/'),
-                            " (", kvp.Key.LanguageName.Text, ")");
-                        SaveAndPlaySound(namedPath, media.MediaPathName.Text.SubstringAfterLast('.'), data);
-                    }
+                            var debugName = !string.IsNullOrEmpty(media.DebugName.Text)
+                                ? media.DebugName.Text.SubstringBeforeLast('.')
+                                : Path.GetFileNameWithoutExtension(mediaRelativePath);
+
+                            var namedPath = Path.Combine(
+                                projectName,
+                                "Content",
+                                "WwiseAudio",
+                                $"{debugName.Replace('\\', '/')} ({kvp.Key.LanguageName.Text})"
+                            );
+
+                            SaveAndPlaySound(namedPath, Path.GetExtension(mediaRelativePath).TrimStart('.'), data);
+                        }
                 }
                 return false;
             }
