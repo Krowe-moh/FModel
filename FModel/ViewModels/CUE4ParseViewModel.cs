@@ -838,6 +838,11 @@ public class CUE4ParseViewModel : ViewModel
             }
             case UAkAudioEvent when isNone && pointer.Object.Value is UAkAudioEvent { EventCookedData: { } wwiseData }:
             {
+                var files = Provider.Files.Values.ToList();
+
+                var bnkFile = files.FirstOrDefault(f => f.Path.Contains("/WwiseAudio/") && f.Path.EndsWith(".bnk", StringComparison.OrdinalIgnoreCase));
+                string bnkDirectory = bnkFile != null ? Path.GetDirectoryName(bnkFile.Path.Replace('/', Path.DirectorySeparatorChar)) : null;
+
                 foreach (var kvp in wwiseData.EventLanguageMap)
                 {
                     if (!kvp.Value.HasValue)
@@ -845,6 +850,13 @@ public class CUE4ParseViewModel : ViewModel
 
                     var projectName = string.IsNullOrEmpty(Provider.ProjectName) ? "Game" : Provider.ProjectName;
                     var baseWwiseAudioPath = Path.Combine(projectName, "Content", "WwiseAudio", "Cooked");
+
+                    // If .bnk was found we will use that for base wwise directory
+                    if (!string.IsNullOrEmpty(bnkDirectory))
+                    {
+                        baseWwiseAudioPath = bnkDirectory;
+                    }
+
                     var audioEventPath = pointer.Object.Value.GetPathName().Replace("Game", projectName);
 
                     foreach (var soundBank in kvp.Value.Value.SoundBanks)
