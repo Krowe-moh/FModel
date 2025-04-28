@@ -60,6 +60,7 @@ using SkiaSharp;
 using UE4Config.Parsing;
 using Application = System.Windows.Application;
 using FGuid = CUE4Parse.UE4.Objects.Core.Misc.FGuid;
+using CUE4Parse.UE4.Wwise.Objects;
 
 namespace FModel.ViewModels;
 
@@ -839,36 +840,121 @@ public class CUE4ParseViewModel : ViewModel
             {
                 foreach (var kvp in wwiseData.EventLanguageMap)
                 {
-                    if (!kvp.Value.HasValue) continue;
+                    if (!kvp.Value.HasValue)
+                        continue;
+
+                    var projectName = string.IsNullOrEmpty(Provider.ProjectName) ? "Game" : Provider.ProjectName;
+                    var baseWwiseAudioPath = Path.Combine(projectName, "Content", "WwiseAudio", "Cooked");
+                    var audioEventPath = pointer.Object.Value.GetPathName().Replace("Game", projectName);
+
+                    foreach (var soundBank in kvp.Value.Value.SoundBanks)
+                    {
+                        if (!soundBank.bContainsMedia)
+                            continue;
+
+                        var soundBankName = soundBank.SoundBankPathName.ToString();
+                        var soundBankPath = Path.Combine(baseWwiseAudioPath, soundBankName);
+                        var audioEventId = kvp.Value.Value.EventId.ToString();
+
+                        if (!Provider.TrySaveAsset(soundBankPath, out byte[] data))
+                            continue;
+
+                        using var ar = new FByteArchive(soundBankName, data);
+                        var wwiseReader = new WwiseReader(ar);
+
+                        var hierarchyTable = new Dictionary<uint, Hierarchy>();
+                        foreach (var hierarchy in wwiseReader.Hierarchies)
+                        {
+                            uint id = hierarchy.Data.Id;
+
+                            if (!hierarchyTable.ContainsKey(id))
+                            {
+                                hierarchyTable.Add(id, hierarchy);
+                            }
+                        }
+
+                        long parsedId = long.Parse(audioEventId);
+                        uint parsedAudioEventId = (uint) parsedId;
+                        if (hierarchyTable.TryGetValue(parsedAudioEventId, out var eventHierarchy) &&
+                            eventHierarchy.Data is HierarchyEvent hierarchyEvent)
+                        {
+                            foreach (var actionId in hierarchyEvent.EventActionIds)
+                            {
+                                if (!hierarchyTable.TryGetValue(actionId, out var actionHierarchy) ||
+                                    actionHierarchy.Data is not HierarchyEventAction eventAction)
+                                    continue;
+
+                                TraverseAndSave(eventAction.ReferencedId);
+                            }
+                        }
+
+                        void TraverseAndSave(uint id)
+                        {
+                            if (!hierarchyTable.TryGetValue(id, out var hierarchy))
+                                return;
+
+                            switch (hierarchy.Data)
+                            {
+                                case HierarchySoundSfxVoice soundSfx:
+                                    SaveWemSound(soundSfx);
+                                    break;
+
+                                case HierarchyRandomSequenceContainer randomContainer:
+                                    foreach (var childId in randomContainer.ChildIDs)
+                                        TraverseAndSave(childId);
+                                    break;
+
+                                case HierarchySwitchContainer switchContainer:
+                                    foreach (var childId in switchContainer.ChildIDs)
+                                        TraverseAndSave(childId);
+                                    break;
+
+                                case HierarchyLayerContainer layerContainer:
+                                    foreach (var childId in layerContainer.ChildIDs)
+                                        TraverseAndSave(childId);
+                                    break;
+                            }
+                        }
+
+                        void SaveWemSound(HierarchySoundSfxVoice soundSfx)
+                        {
+                            var wemId = soundSfx.SourceId;
+                            if (wwiseReader.WwiseEncodedMedias.TryGetValue(wemId.ToString(), out var wemData))
+                            {
+                                var debugName = kvp.Value.Value.DebugName.ToString();
+                                var outputPath = Path.Combine(audioEventPath.Replace($".{debugName}", ""), $"{debugName.Replace('\\', '/')} ({wemId})");
+                                SaveAndPlaySound(outputPath, "WEM", wemData);
+                            }
+                        }
+                    }
 
                     foreach (var media in kvp.Value.Value.Media)
                     {
-                            var mediaRelativePath = media.MediaPathName.Text.Replace('\\', '/');
-                            var projectName = string.IsNullOrEmpty(Provider.ProjectName) ? "Game" : Provider.ProjectName;
-                            var baseWwiseAudioPath = Path.Combine(projectName, "Content", "WwiseAudio");
-                            var candidatePath = Path.Combine(baseWwiseAudioPath, "Cooked", media.MediaPathName.Text);
-                            if (!Provider.TrySaveAsset(candidatePath, out byte[] data))
+                        var candidatePath = Path.Combine(baseWwiseAudioPath, media.MediaPathName.Text);
+                        var mediaRelativePath = media.MediaPathName.Text.Replace('\\', '/');
+
+                        if (!Provider.TrySaveAsset(candidatePath, out byte[] data))
+                        {
+                            candidatePath = Path.Combine(baseWwiseAudioPath, mediaRelativePath);
+                            if (!Provider.TrySaveAsset(candidatePath, out data))
                             {
-                                candidatePath = Path.Combine(baseWwiseAudioPath, mediaRelativePath);
-                                if (!Provider.TrySaveAsset(candidatePath, out data))
-                                {
-                                    continue;
-                                }
+                                continue;
                             }
-
-                            var debugName = !string.IsNullOrEmpty(media.DebugName.Text)
-                                ? media.DebugName.Text.SubstringBeforeLast('.')
-                                : Path.GetFileNameWithoutExtension(mediaRelativePath);
-
-                            var namedPath = Path.Combine(
-                                projectName,
-                                "Content",
-                                "WwiseAudio",
-                                $"{debugName.Replace('\\', '/')} ({kvp.Key.LanguageName.Text})"
-                            );
-
-                            SaveAndPlaySound(namedPath, Path.GetExtension(mediaRelativePath).TrimStart('.'), data);
                         }
+
+                        var debugName = !string.IsNullOrEmpty(media.DebugName.Text)
+                            ? media.DebugName.Text.SubstringBeforeLast('.')
+                            : Path.GetFileNameWithoutExtension(mediaRelativePath);
+
+                        var namedPath = Path.Combine(
+                            projectName,
+                            "Content",
+                            "WwiseAudio",
+                            $"{debugName.Replace('\\', '/')} ({kvp.Key.LanguageName.Text})"
+                        );
+
+                        SaveAndPlaySound(namedPath, Path.GetExtension(mediaRelativePath).TrimStart('.'), data);
+                    }
                 }
                 return false;
             }
