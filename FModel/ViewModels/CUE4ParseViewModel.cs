@@ -922,7 +922,16 @@ public class CUE4ParseViewModel : ViewModel
                             if (wwiseReader.WwiseEncodedMedias.TryGetValue(wemId.ToString(), out var wemData))
                             {
                                 var debugName = kvp.Value.Value.DebugName.ToString();
-                                var outputPath = Path.Combine(audioEventPath.Replace($".{debugName}", ""), $"{debugName.Replace('\\', '/')} ({wemId})");
+                                var fileName = $"{debugName.Replace('\\', '/')} ({wemId})";
+                                var outputPath = Path.Combine(audioEventPath.Replace($".{debugName}", ""), fileName);
+
+                                // If file path is too long, audio player will fail
+                                if (outputPath.StartsWith('/')) outputPath = outputPath[1..];
+                                if (Path.Combine(UserSettings.Default.AudioDirectory, outputPath).Length >= 250)
+                                {
+                                    outputPath = Path.Combine(projectName, fileName);
+                                }
+
                                 SaveAndPlaySound(outputPath, "WEM", wemData);
                             }
                         }
