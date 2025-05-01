@@ -896,7 +896,17 @@ public class CUE4ParseViewModel : ViewModel
                             switch (hierarchy.Data)
                             {
                                 case HierarchySoundSfxVoice soundSfx:
-                                    SaveWemSound(soundSfx);
+                                    SaveWemSound(soundSfx.SourceId);
+                                    break;
+
+                                case HierarchyMusicTrack musicTrack:
+                                    foreach (var playlist in musicTrack.Playlist)
+                                        SaveWemSound((uint) playlist.SourceID);
+                                    break;
+
+                                case HierarchyMusicSegment musicSegment:
+                                    foreach (var childId in musicSegment.ChildIDs)
+                                        TraverseAndSave(childId);
                                     break;
 
                                 case HierarchyRandomSequenceContainer randomContainer:
@@ -916,9 +926,8 @@ public class CUE4ParseViewModel : ViewModel
                             }
                         }
 
-                        void SaveWemSound(HierarchySoundSfxVoice soundSfx)
+                        void SaveWemSound(uint wemId)
                         {
-                            var wemId = soundSfx.SourceId;
                             if (wwiseReader.WwiseEncodedMedias.TryGetValue(wemId.ToString(), out var wemData))
                             {
                                 var debugName = kvp.Value.Value.DebugName.ToString();
