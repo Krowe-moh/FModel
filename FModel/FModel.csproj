@@ -73,6 +73,7 @@
     <None Remove="Resources\asset_psd.png" />
     <None Remove="Resources\asset_png.png" />
     <None Remove="Resources\athena.png" />
+    <None Remove="Resources\deadbydaylight.png" />
     <None Remove="Resources\Json.xshd" />
     <None Remove="Resources\Ini.xshd" />
     <None Remove="Resources\Verse.xshd" />
@@ -181,6 +182,7 @@
     <Resource Include="Resources\battlebreakers.png" />
     <Resource Include="Resources\blueprint.png" />
     <Resource Include="Resources\borderlands.png" />
+    <Resource Include="Resources\deadbydaylight.png" />
     <Resource Include="Resources\fallenorder.png" />
     <Resource Include="Resources\FModel.ico" />
     <Resource Include="Resources\folder.png" />

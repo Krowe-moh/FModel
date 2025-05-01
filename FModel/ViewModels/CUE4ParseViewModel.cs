@@ -838,25 +838,13 @@ public class CUE4ParseViewModel : ViewModel
             }
             case UAkAudioEvent when isNone && pointer.Object.Value is UAkAudioEvent { EventCookedData: { } wwiseData }:
             {
-                var files = Provider.Files.Values.ToList();
-
-                var bnkFile = files.FirstOrDefault(f => f.Path.Contains("/WwiseAudio/") && f.Path.EndsWith(".bnk", StringComparison.OrdinalIgnoreCase));
-                string bnkDirectory = bnkFile != null ? Path.GetDirectoryName(bnkFile.Path.Replace('/', Path.DirectorySeparatorChar)) : null;
-
                 foreach (var kvp in wwiseData.EventLanguageMap)
                 {
                     if (!kvp.Value.HasValue)
                         continue;
 
                     var projectName = string.IsNullOrEmpty(Provider.ProjectName) ? "Game" : Provider.ProjectName;
-                    var baseWwiseAudioPath = Path.Combine(projectName, "Content", "WwiseAudio", "Cooked");
-
-                    // If .bnk was found we will use that for base wwise directory
-                    if (!string.IsNullOrEmpty(bnkDirectory))
-                    {
-                        baseWwiseAudioPath = bnkDirectory;
-                    }
-
+                    var baseWwiseAudioPath = DetermineBaseWwiseAudioPath(projectName, kvp.Value.Value);
                     var audioEventPath = pointer.Object.Value.GetPathName().Replace("Game", projectName);
 
                     foreach (var soundBank in kvp.Value.Value.SoundBanks)
@@ -951,16 +939,11 @@ public class CUE4ParseViewModel : ViewModel
 
                     foreach (var media in kvp.Value.Value.Media)
                     {
-                        var candidatePath = Path.Combine(baseWwiseAudioPath, media.MediaPathName.Text);
-                        var mediaRelativePath = media.MediaPathName.Text.Replace('\\', '/');
+                        var mediaRelativePath = Path.Combine(baseWwiseAudioPath, media.MediaPathName.Text.Replace('\\', '/'));
 
-                        if (!Provider.TrySaveAsset(candidatePath, out byte[] data))
+                        if (!Provider.TrySaveAsset(mediaRelativePath, out byte[] data))
                         {
-                            candidatePath = Path.Combine(baseWwiseAudioPath, mediaRelativePath);
-                            if (!Provider.TrySaveAsset(candidatePath, out data))
-                            {
-                                continue;
-                            }
+                           continue;
                         }
 
                         var debugName = !string.IsNullOrEmpty(media.DebugName.Text)
@@ -1154,5 +1137,40 @@ public class CUE4ParseViewModel : ViewModel
     private static bool HasFlag(EBulkType a, EBulkType b)
     {
         return (a & b) == b;
+    }
+
+    private string DetermineBaseWwiseAudioPath(string projectName, FWwiseEventCookedData value)
+    {
+        var files = Provider.Files.Values.ToList();
+
+        // Most common directory
+        var baseWwiseAudioPath = Path.Combine(projectName, "Content", "WwiseAudio");
+
+        var soundBankName = value.SoundBanks.FirstOrDefault().SoundBankPathName.ToString() ?? string.Empty;
+        var mediaPathName = value.Media.FirstOrDefault().MediaPathName.Text ?? string.Empty;
+
+        if (!string.IsNullOrEmpty(soundBankName))
+        {
+            var matchingFile = files.FirstOrDefault(f => f.Path.Contains(soundBankName));
+            if (matchingFile != null)
+            {
+                var matchingDirectory = matchingFile.Path[..matchingFile.Path.LastIndexOf(soundBankName)];
+                baseWwiseAudioPath = matchingDirectory.Replace('/', Path.DirectorySeparatorChar);
+                return baseWwiseAudioPath;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(mediaPathName))
+        {
+            var matchingFile = files.FirstOrDefault(f => f.Path.Contains(mediaPathName));
+            if (matchingFile != null)
+            {
+                var matchingDirectory = matchingFile.Path[..matchingFile.Path.LastIndexOf(mediaPathName)];
+                baseWwiseAudioPath = matchingDirectory.Replace('/', Path.DirectorySeparatorChar);
+                return baseWwiseAudioPath;
+            }
+        }
+
+        return baseWwiseAudioPath;
     }
 }

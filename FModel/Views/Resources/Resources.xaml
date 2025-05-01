@@ -1,4 +1,4 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:local="clr-namespace:FModel"
                     xmlns:system="clr-namespace:System;assembly=mscorlib"
@@ -416,6 +416,9 @@
                         </DataTrigger>
                         <DataTrigger Binding="{Binding Header}" Value="Athena">
                             <Setter TargetName="TreeImage" Property="Source" Value="/FModel;component/Resources/athena.png" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Header}" Value="DeadByDaylight">
+                            <Setter TargetName="TreeImage" Property="Source" Value="/FModel;component/Resources/deadbydaylight.png" />
                         </DataTrigger>
                         <DataTrigger Binding="{Binding Header, Converter={x:Static converters:CaseInsensitiveStringEqualsConverter.Instance}, ConverterParameter='StateOfDecay2'}" Value="True">
                             <Setter TargetName="TreeImage" Property="Source" Value="/FModel;component/Resources/stateofdecay2.png" />
