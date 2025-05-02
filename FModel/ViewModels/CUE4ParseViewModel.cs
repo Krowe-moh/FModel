@@ -845,7 +845,7 @@ public class CUE4ParseViewModel : ViewModel
 
                     var projectName = string.IsNullOrEmpty(Provider.ProjectName) ? "Game" : Provider.ProjectName;
                     var baseWwiseAudioPath = DetermineBaseWwiseAudioPath(projectName, kvp.Value.Value);
-                    var audioEventPath = pointer.Object.Value.GetPathName().Replace("Game", projectName);
+                    var audioEventPath = pointer.Object.Value.GetPathName().StartsWith("Game") ? pointer.Object.Value.GetPathName().Replace("Game", projectName) : pointer.Object.Value.GetPathName();
 
                     foreach (var soundBank in kvp.Value.Value.SoundBanks)
                     {

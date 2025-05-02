@@ -417,9 +417,6 @@
                         <DataTrigger Binding="{Binding Header}" Value="Athena">
                             <Setter TargetName="TreeImage" Property="Source" Value="/FModel;component/Resources/athena.png" />
                         </DataTrigger>
-                        <DataTrigger Binding="{Binding Header}" Value="DeadByDaylight">
-                            <Setter TargetName="TreeImage" Property="Source" Value="/FModel;component/Resources/deadbydaylight.png" />
-                        </DataTrigger>
                         <DataTrigger Binding="{Binding Header, Converter={x:Static converters:CaseInsensitiveStringEqualsConverter.Instance}, ConverterParameter='StateOfDecay2'}" Value="True">
                             <Setter TargetName="TreeImage" Property="Source" Value="/FModel;component/Resources/stateofdecay2.png" />
                         </DataTrigger>
