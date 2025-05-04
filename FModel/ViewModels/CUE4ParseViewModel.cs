@@ -584,6 +584,7 @@ public class CUE4ParseViewModel : ViewModel
             case "manifest":
             case "uplugin":
             case "archive":
+            case "dnearchive": // Banishers: Ghosts of New Eden
             case "vmodule":
             case "uparam": // Steel Hunters
             case "verse":
@@ -592,6 +593,7 @@ public class CUE4ParseViewModel : ViewModel
             case "ini":
             case "txt":
             case "log":
+            case "lsd": // Days Gone
             case "bat":
             case "dat":
             case "cfg":
@@ -654,7 +656,7 @@ public class CUE4ParseViewModel : ViewModel
             {
                 var archive = entry.CreateReader();
                 var wwise = new WwiseReader(archive);
-                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(wwise, Formatting.Indented), saveProperties, updateUi);
+                    TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(wwise, Formatting.Indented), saveProperties, updateUi);
                 foreach (var (name, data) in wwise.WwiseEncodedMedias)
                 {
                     SaveAndPlaySound(entry.Path.SubstringBeforeWithLast('/') + name, "WEM", data);
@@ -662,10 +664,12 @@ public class CUE4ParseViewModel : ViewModel
 
                 break;
             }
+            case "xvag":
+            case "at9":
             case "wem":
             {
                 var data = Provider.SaveAsset(entry);
-                SaveAndPlaySound(entry.Path, "WEM", data);
+                SaveAndPlaySound(entry.PathWithoutExtension, entry.Extension, data);
 
                 break;
             }
