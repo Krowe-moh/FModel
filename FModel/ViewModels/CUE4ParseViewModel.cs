@@ -606,6 +606,7 @@ public class CUE4ParseViewModel : ViewModel
             case "csv":
             case "pem":
             case "tps":
+            case "tgs": // State of Decay 2
             case "lua":
             case "js":
             case "po":
@@ -656,7 +657,7 @@ public class CUE4ParseViewModel : ViewModel
             {
                 var archive = entry.CreateReader();
                 var wwise = new WwiseReader(archive);
-                    TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(wwise, Formatting.Indented), saveProperties, updateUi);
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(wwise, Formatting.Indented), saveProperties, updateUi);
                 foreach (var (name, data) in wwise.WwiseEncodedMedias)
                 {
                     SaveAndPlaySound(entry.Path.SubstringBeforeWithLast('/') + name, "WEM", data);

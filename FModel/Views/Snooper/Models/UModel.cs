@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -163,8 +163,8 @@ public abstract class UModel : IRenderableModel
                 int max = skelVert.Influences.Count;
                 for (int j = 0; j < 8; j++)
                 {
-                    var boneID = j < max ? skelVert.Influences[j].Bone : (short) 0;
-                    var weight = j < max ? skelVert.Influences[j].RawWeight : (byte) 0;
+                    var boneID = j < max ? skelVert.Influences[j].Bone : (ushort) 0;
+                    var weight = j < max ? skelVert.Influences[j].RawWeight : (ushort) 0;
 
                     // Pack bone ID and weight
                     Vertices[baseIndex + count++] = (boneID << 16) | weight;
