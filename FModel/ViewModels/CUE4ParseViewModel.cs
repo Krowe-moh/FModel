@@ -35,6 +35,7 @@ using CUE4Parse.UE4.Readers;
 using CUE4Parse.UE4.Shaders;
 using CUE4Parse.UE4.Versions;
 using CUE4Parse.UE4.Wwise;
+using CUE4Parse.UE4.Wwise.Objects.HIRC;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
 using CUE4Parse.FileProvider.Objects;
@@ -60,7 +61,6 @@ using SkiaSharp;
 using UE4Config.Parsing;
 using Application = System.Windows.Application;
 using FGuid = CUE4Parse.UE4.Objects.Core.Misc.FGuid;
-using CUE4Parse.UE4.Wwise.Objects;
 
 namespace FModel.ViewModels;
 
@@ -845,7 +845,9 @@ public class CUE4ParseViewModel : ViewModel
 
                     var projectName = string.IsNullOrEmpty(Provider.ProjectName) ? "Game" : Provider.ProjectName;
                     var baseWwiseAudioPath = DetermineBaseWwiseAudioPath(projectName, kvp.Value.Value);
-                    var audioEventPath = pointer.Object.Value.GetPathName().StartsWith("Game") ? pointer.Object.Value.GetPathName().Replace("Game", projectName) : pointer.Object.Value.GetPathName();
+                    var audioEventPath = pointer.Object.Value.GetPathName().StartsWith("/Game")
+                        ? string.Concat(projectName, pointer.Object.Value.GetPathName().AsSpan(5))
+                        : pointer.Object.Value.GetPathName();
 
                     foreach (var soundBank in kvp.Value.Value.SoundBanks)
                     {
@@ -888,6 +890,8 @@ public class CUE4ParseViewModel : ViewModel
                             }
                         }
 
+                        // TODO: If EventActionPlay points to different soundbank ID than we're currently in, use `wwiseReader.IdToString` to convert to bank name, serialize it, and continue traversing from there
+                        // TODO: It's possible for switch container to point to a different soundbank without referencing it in any way. I don't know how to handle that yet
                         void TraverseAndSave(uint id)
                         {
                             if (!hierarchyTable.TryGetValue(id, out var hierarchy))
@@ -896,7 +900,17 @@ public class CUE4ParseViewModel : ViewModel
                             switch (hierarchy.Data)
                             {
                                 case HierarchySoundSfxVoice soundSfx:
-                                    SaveWemSound(soundSfx.SourceId);
+                                    SaveWemSound(soundSfx.Source.SourceId);
+                                    break;
+
+                                case HierarchyMusicRandomSequenceContainer musicRandomSequenceContainer:
+                                    foreach (var childId in musicRandomSequenceContainer.ChildIds)
+                                        TraverseAndSave(childId);
+                                    break;
+
+                                case HierarchyMusicSwitchContainer musicSwitchContainer:
+                                    foreach (var childId in musicSwitchContainer.ChildIds)
+                                        TraverseAndSave(childId);
                                     break;
 
                                 case HierarchyMusicTrack musicTrack:
@@ -905,22 +919,22 @@ public class CUE4ParseViewModel : ViewModel
                                     break;
 
                                 case HierarchyMusicSegment musicSegment:
-                                    foreach (var childId in musicSegment.ChildIDs)
+                                    foreach (var childId in musicSegment.ChildIds)
                                         TraverseAndSave(childId);
                                     break;
 
                                 case HierarchyRandomSequenceContainer randomContainer:
-                                    foreach (var childId in randomContainer.ChildIDs)
+                                    foreach (var childId in randomContainer.ChildIds)
                                         TraverseAndSave(childId);
                                     break;
 
                                 case HierarchySwitchContainer switchContainer:
-                                    foreach (var childId in switchContainer.ChildIDs)
+                                    foreach (var childId in switchContainer.ChildIds)
                                         TraverseAndSave(childId);
                                     break;
 
                                 case HierarchyLayerContainer layerContainer:
-                                    foreach (var childId in layerContainer.ChildIDs)
+                                    foreach (var childId in layerContainer.ChildIds)
                                         TraverseAndSave(childId);
                                     break;
                             }
@@ -1061,7 +1075,7 @@ public class CUE4ParseViewModel : ViewModel
 
     private void SaveAndPlaySound(string fullPath, string ext, byte[] data)
     {
-        if (fullPath.StartsWith("/")) fullPath = fullPath[1..];
+        if (fullPath.StartsWith('/')) fullPath = fullPath[1..];
         var savedAudioPath = Path.Combine(UserSettings.Default.AudioDirectory,
             UserSettings.Default.KeepDirectoryStructure ? fullPath : fullPath.SubstringAfterLast('/')).Replace('\\', '/') + $".{ext.ToLowerInvariant()}";
 
