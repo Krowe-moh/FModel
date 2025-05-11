@@ -137,12 +137,12 @@ public class BaseIconStats : BaseIcon
                 _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "6EA26D1A4252034FBD869A90F9A6E49A", "Reload Time"), reloadTime, 10));
             }
 
-            if (overheatCooldown != 0f && clipSize > 999f || clipSize == 0f)
+            if (overheatCooldown != 0f && clipSize > 999f || overheatCooldown != 0f && clipSize == 0f)
             {
                 _statistics.Add(new IconStat("Overheat Cooldown", overheatCooldown, 5));
             }
 
-            if (heatMax != 0f && heatPerShot != 0f && clipSize > 999f || clipSize == 0f)
+            if (heatMax != 0f && heatPerShot != 0f && clipSize > 999f || heatMax != 0f && heatPerShot != 0f && clipSize == 0f)
             {
                 _statistics.Add(new IconStat("Shots to Overheat", Math.Ceiling(heatMax / heatPerShot), 80));
             }
