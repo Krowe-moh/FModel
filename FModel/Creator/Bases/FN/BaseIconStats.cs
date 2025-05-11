@@ -92,6 +92,9 @@ public class BaseIconStats : BaseIcon
             weaponRowValue.TryGetValue(out float armTime, "ArmTime"); //Time it takes for traps to be able to be set off
             weaponRowValue.TryGetValue(out float reloadTime, "ReloadTime"); //Time it takes for a weapon to reload
             weaponRowValue.TryGetValue(out int bpc, "BulletsPerCartridge"); //Amount of pellets shot by a weapon at once, usually for shotguns
+            weaponRowValue.TryGetValue(out float heatMax, "OverheatingMaxValue"); //Maximum heat overheating weapons can hold before they need to cool off
+            weaponRowValue.TryGetValue(out float heatPerShot, "OverheatHeatingValue"); //Heat generated per shot on overheat weapons
+            weaponRowValue.TryGetValue(out float overheatCooldown, "OverheatedCooldownDelay"); //Cooldown after a weapon reaches its maximum heat capacity
             {
                 var multiplier = bpc != 0f ? bpc : 1;
                 if (dmgPb != 0f)
@@ -104,12 +107,17 @@ public class BaseIconStats : BaseIcon
                     _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "0DEF2455463B008C4499FEA03D149EDF", "Headshot Damage"), mdpc, 160));
                 }
 
-                else if (dmgCritical != 0f)
+                else if (dmgCritical != 0f && dmgCritical != 1f && dmgPb != 0f)
                 {
                     _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "0DEF2455463B008C4499FEA03D149EDF", "Headshot Damage"), dmgPb * dmgCritical * multiplier, 160));
                 }
             }
-            if (clipSize != 0)
+            if (clipSize > 999f || clipSize == 0f)
+            {
+                _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "068239DD4327B36124498C9C5F61C038", "Magazine Size"), Utils.GetLocalizedResource("", "0FAE8E5445029F2AA209ADB0FE49B23C", "Infinite"), -1));
+            }
+
+            else if (clipSize != 0f)
             {
                 _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "068239DD4327B36124498C9C5F61C038", "Magazine Size"), clipSize, 40));
             }
@@ -124,11 +132,20 @@ public class BaseIconStats : BaseIcon
                 _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "3BFEB8BD41A677CC5F45B9A90D6EAD6F", "Arming Delay"), armTime, 5));
             }
 
-            if (reloadTime != 0f)
+            if (reloadTime != 0f && clipSize < 999f && clipSize != 0f)
             {
                 _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "6EA26D1A4252034FBD869A90F9A6E49A", "Reload Time"), reloadTime, 10));
             }
 
+            if (overheatCooldown != 0f && clipSize > 999f || clipSize == 0f)
+            {
+                _statistics.Add(new IconStat("Overheat Cooldown", overheatCooldown, 5));
+            }
+
+            if (heatMax != 0f && heatPerShot != 0f && clipSize > 999f || clipSize == 0f)
+            {
+                _statistics.Add(new IconStat("Shots to Overheat", Math.Ceiling(heatMax / heatPerShot), 80));
+            }
             if ((Object.ExportType.Equals("FortContextTrapItemDefinition", StringComparison.OrdinalIgnoreCase) ||
                  Object.ExportType.Equals("FortTrapItemDefinition", StringComparison.OrdinalIgnoreCase)) &&
                 weaponRowValue.TryGetValue(out UDataTable durabilityTable, "Durability") &&
@@ -292,6 +309,10 @@ public class IconStat
         _statPaint.Color = SKColors.White;
         c.DrawText(_value.ToString(), new SKPoint(width - 50, y + 10), _statPaint);
 
+        if (_maxValue == -1) //fill bar if max value is set to -1, for things that don't return a number here but should still be represented as the maximum value
+        {
+            c.DrawRect(new SKRect(height * 2, y, Math.Min(width - height, sliderRight), y + 5), _statPaint);
+        }
         if (_maxValue < 1 || !float.TryParse(_value.ToString(), out var floatValue)) return;
         if (floatValue < 0)
             floatValue = 0;
