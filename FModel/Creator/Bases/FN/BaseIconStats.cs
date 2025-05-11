@@ -96,27 +96,27 @@ public class BaseIconStats : BaseIcon
                 var multiplier = bpc != 0f ? bpc : 1;
                 if (dmgPb != 0f)
                 {
-                    _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "35D04D1B45737BEA25B69686D9E085B9", "Damage"), dmgPb * multiplier, 200));
+                    _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "35D04D1B45737BEA25B69686D9E085B9", "Damage"), dmgPb * multiplier, 160));
                 }
 
                 if (mdpc > 0f && dmgPb * dmgCritical * multiplier > mdpc)
                 {
-                    _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "0DEF2455463B008C4499FEA03D149EDF", "Headshot Damage"), mdpc, 200));
+                    _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "0DEF2455463B008C4499FEA03D149EDF", "Headshot Damage"), mdpc, 160));
                 }
 
                 else if (dmgCritical != 0f)
                 {
-                    _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "0DEF2455463B008C4499FEA03D149EDF", "Headshot Damage"), dmgPb * dmgCritical * multiplier, 200));
+                    _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "0DEF2455463B008C4499FEA03D149EDF", "Headshot Damage"), dmgPb * dmgCritical * multiplier, 160));
                 }
             }
             if (clipSize != 0)
             {
-                _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "068239DD4327B36124498C9C5F61C038", "Magazine Size"), clipSize, 50));
+                _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "068239DD4327B36124498C9C5F61C038", "Magazine Size"), clipSize, 40));
             }
 
             if (firingRate != 0f)
             {
-                _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "27B80BA44805ABD5A2D2BAB2902B250C", "Fire Rate"), firingRate, 15));
+                _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "27B80BA44805ABD5A2D2BAB2902B250C", "Fire Rate"), firingRate, 11));
             }
 
             if (armTime != 0f)
@@ -126,7 +126,7 @@ public class BaseIconStats : BaseIcon
 
             if (reloadTime != 0f)
             {
-                _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "6EA26D1A4252034FBD869A90F9A6E49A", "Reload Time"), reloadTime, 15));
+                _statistics.Add(new IconStat(Utils.GetLocalizedResource("", "6EA26D1A4252034FBD869A90F9A6E49A", "Reload Time"), reloadTime, 10));
             }
 
             if ((Object.ExportType.Equals("FortContextTrapItemDefinition", StringComparison.OrdinalIgnoreCase) ||
