@@ -606,7 +606,7 @@ public class CUE4ParseViewModel : ViewModel
             case "csv":
             case "pem":
             case "tps":
-            case "tgs": // State of Decay 2
+            case "tgc": // State of Decay 2
             case "lua":
             case "js":
             case "po":
