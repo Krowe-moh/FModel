@@ -50,6 +50,7 @@ public class CreatorPackage : IDisposable
             case "AthenaPickaxeItemDefinition":
             case "AthenaGadgetItemDefinition":
             case "AthenaGliderItemDefinition":
+            case "AthenaHatItemDefinition":
             case "AthenaSprayItemDefinition":
             case "AthenaDanceItemDefinition":
             case "AthenaEmojiItemDefinition":
