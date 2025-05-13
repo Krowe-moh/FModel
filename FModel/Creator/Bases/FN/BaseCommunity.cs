@@ -124,7 +124,14 @@ public class BaseCommunity : BaseIcon
         if (!bShort) return base.GetCosmeticSeason(seasonNumber);
         var s = seasonNumber["Cosmetics.Filter.Season.".Length..];
         (int chapterIdx, int seasonIdx) = GetInternalSID(int.Parse(s));
-        return $"C{chapterIdx} S{seasonIdx}";
+        return s switch
+        {
+            "10" => $"C{chapterIdx} SX",
+            "27" => $"Fortnite: OG",
+            "32" => $"Fortnite: Remix",
+            "35" => $"C{chapterIdx} MS1",
+            _ => $"C{chapterIdx} S{seasonIdx}"
+        };
     }
 
     private new void DrawBackground(SKCanvas c)
