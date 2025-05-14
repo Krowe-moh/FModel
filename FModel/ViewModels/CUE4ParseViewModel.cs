@@ -61,6 +61,7 @@ using SkiaSharp;
 using UE4Config.Parsing;
 using Application = System.Windows.Application;
 using FGuid = CUE4Parse.UE4.Objects.Core.Misc.FGuid;
+using CUE4Parse.UE4.Wwise.Objects;
 
 namespace FModel.ViewModels;
 
@@ -761,6 +762,11 @@ public class CUE4ParseViewModel : ViewModel
         }
     }
 
+    private readonly Dictionary<uint, Hierarchy> _wwiseHierarchyTables = [];
+    private readonly Dictionary<string, byte[]> _wwiseEncodedMedia = [];
+    private readonly List<string> _wwiseLoadedSoundBanks = [];
+    private bool _completedWwiseFullBnkInit = false;
+
     private bool CheckExport(CancellationToken cancellationToken, IPackage pkg, int index, EBulkType bulk = EBulkType.None) // return true once you wanna stop searching for exports
     {
         var isNone = bulk == EBulkType.None;
@@ -838,6 +844,7 @@ public class CUE4ParseViewModel : ViewModel
             }
             case UAkAudioEvent when isNone && pointer.Object.Value is UAkAudioEvent { EventCookedData: { } wwiseData }:
             {
+                var visitedWemIds = new HashSet<uint>(); // To prevent duplicates
                 foreach (var kvp in wwiseData.EventLanguageMap)
                 {
                     if (!kvp.Value.HasValue)
@@ -849,6 +856,8 @@ public class CUE4ParseViewModel : ViewModel
                         ? string.Concat(projectName, pointer.Object.Value.GetPathName().AsSpan(5))
                         : pointer.Object.Value.GetPathName();
 
+                    BulkInitializeWwiseSoundBanks(baseWwiseAudioPath);
+
                     foreach (var soundBank in kvp.Value.Value.SoundBanks)
                     {
                         if (!soundBank.bContainsMedia)
@@ -858,31 +867,17 @@ public class CUE4ParseViewModel : ViewModel
                         var soundBankPath = Path.Combine(baseWwiseAudioPath, soundBankName);
                         var audioEventId = kvp.Value.Value.EventId.ToString();
 
-                        if (!Provider.TrySaveAsset(soundBankPath, out byte[] data))
-                            continue;
+                        TryLoadAndCacheSoundBank(soundBankPath, soundBankName, out _);
 
-                        using var ar = new FByteArchive(soundBankName, data);
-                        var wwiseReader = new WwiseReader(ar);
-
-                        var hierarchyTable = new Dictionary<uint, Hierarchy>();
-                        foreach (var hierarchy in wwiseReader.Hierarchies)
-                        {
-                            uint id = hierarchy.Data.Id;
-
-                            if (!hierarchyTable.ContainsKey(id))
-                            {
-                                hierarchyTable.Add(id, hierarchy);
-                            }
-                        }
-
+                        var visitedDecisionNodes = new HashSet<(uint parentHierarchyId, uint audioNodeId)>(); // To prevent infinite loops
                         long parsedId = long.Parse(audioEventId);
                         uint parsedAudioEventId = (uint) parsedId;
-                        if (hierarchyTable.TryGetValue(parsedAudioEventId, out var eventHierarchy) &&
+                        if (_wwiseHierarchyTables.TryGetValue(parsedAudioEventId, out var eventHierarchy) &&
                             eventHierarchy.Data is HierarchyEvent hierarchyEvent)
                         {
                             foreach (var actionId in hierarchyEvent.EventActionIds)
                             {
-                                if (!hierarchyTable.TryGetValue(actionId, out var actionHierarchy) ||
+                                if (!_wwiseHierarchyTables.TryGetValue(actionId, out var actionHierarchy) ||
                                     actionHierarchy.Data is not HierarchyEventAction eventAction)
                                     continue;
 
@@ -891,10 +886,9 @@ public class CUE4ParseViewModel : ViewModel
                         }
 
                         // TODO: If EventActionPlay points to different soundbank ID than we're currently in, use `wwiseReader.IdToString` to convert to bank name, serialize it, and continue traversing from there
-                        // TODO: It's possible for switch container to point to a different soundbank without referencing it in any way. I don't know how to handle that yet
                         void TraverseAndSave(uint id)
                         {
-                            if (!hierarchyTable.TryGetValue(id, out var hierarchy))
+                            if (!_wwiseHierarchyTables.TryGetValue(id, out var hierarchy))
                                 return;
 
                             switch (hierarchy.Data)
@@ -911,11 +905,28 @@ public class CUE4ParseViewModel : ViewModel
                                 case HierarchyMusicSwitchContainer musicSwitchContainer:
                                     foreach (var childId in musicSwitchContainer.ChildIds)
                                         TraverseAndSave(childId);
-                                    break;
+
+                                    foreach (var node in musicSwitchContainer.DecisionTree.Nodes)
+                                        foreach (var nodeChild in node.Children)
+                                            TraverseDecisionTreeNode(nodeChild, musicSwitchContainer.Id);
+
+                                        void TraverseDecisionTreeNode(AkDecisionTreeNode node, uint parentHierarchyId)
+                                        {
+                                            var key = (parentHierarchyId, node.AudioNodeId);
+                                            if (!visitedDecisionNodes.Add(key))
+                                                return;
+
+                                            foreach (var nodeChildTraverse in node.Children)
+                                            {
+                                                TraverseAndSave(nodeChildTraverse.AudioNodeId);
+                                                TraverseDecisionTreeNode(nodeChildTraverse, parentHierarchyId);
+                                            }
+                                        }
+                                        break;
 
                                 case HierarchyMusicTrack musicTrack:
                                     foreach (var playlist in musicTrack.Playlist)
-                                        SaveWemSound((uint) playlist.SourceID);
+                                        SaveWemSound(playlist.SourceId);
                                     break;
 
                                 case HierarchyMusicSegment musicSegment:
@@ -942,7 +953,10 @@ public class CUE4ParseViewModel : ViewModel
 
                         void SaveWemSound(uint wemId)
                         {
-                            if (wwiseReader.WwiseEncodedMedias.TryGetValue(wemId.ToString(), out var wemData))
+                            if (!visitedWemIds.Add(wemId))
+                                return;
+
+                            if (_wwiseEncodedMedia.TryGetValue(wemId.ToString(), out var wemData))
                             {
                                 var debugName = kvp.Value.Value.DebugName.ToString();
                                 var fileName = $"{debugName.Replace('\\', '/')} ({wemId})";
@@ -974,9 +988,7 @@ public class CUE4ParseViewModel : ViewModel
                             : Path.GetFileNameWithoutExtension(mediaRelativePath);
 
                         var namedPath = Path.Combine(
-                            projectName,
-                            "Content",
-                            "WwiseAudio",
+                            baseWwiseAudioPath,
                             $"{debugName.Replace('\\', '/')} ({kvp.Key.LanguageName.Text})"
                         );
 
@@ -1166,15 +1178,14 @@ public class CUE4ParseViewModel : ViewModel
     {
         var files = Provider.Files.Values.ToList();
 
-        // Most common directory
-        var baseWwiseAudioPath = Path.Combine(projectName, "Content", "WwiseAudio");
+        var baseWwiseAudioPath = Path.Combine(projectName, "Content", "WwiseAudio"); // Most common directory
 
         var soundBankName = value.SoundBanks.FirstOrDefault().SoundBankPathName.ToString() ?? string.Empty;
         var mediaPathName = value.Media.FirstOrDefault().MediaPathName.Text ?? string.Empty;
 
         if (!string.IsNullOrEmpty(soundBankName))
         {
-            var matchingFile = files.FirstOrDefault(f => f.Path.Contains(soundBankName));
+            GameFile matchingFile = files.FirstOrDefault(f => f.Path.Contains(soundBankName));
             if (matchingFile != null)
             {
                 var matchingDirectory = matchingFile.Path[..matchingFile.Path.LastIndexOf(soundBankName)];
@@ -1185,7 +1196,7 @@ public class CUE4ParseViewModel : ViewModel
 
         if (!string.IsNullOrEmpty(mediaPathName))
         {
-            var matchingFile = files.FirstOrDefault(f => f.Path.Contains(mediaPathName));
+            GameFile matchingFile = files.FirstOrDefault(f => f.Path.Contains(mediaPathName));
             if (matchingFile != null)
             {
                 var matchingDirectory = matchingFile.Path[..matchingFile.Path.LastIndexOf(mediaPathName)];
@@ -1195,5 +1206,80 @@ public class CUE4ParseViewModel : ViewModel
         }
 
         return baseWwiseAudioPath;
+    }
+
+    private void BulkInitializeWwiseSoundBanks(string baseWwiseAudioPath)
+    {
+        if (_completedWwiseFullBnkInit)
+            return;
+
+        // Important note: If game splits audio event hierarchies across multiple soundbanks and either of these limits is reached, given game requires custom loading implementation!
+        const long MAX_TOTAL_WWISE_SIZE = 2L * 1024 * 1024 * 1024; // 2 GB
+        const int MAX_BANK_FILES = 500;
+
+        long totalLoadedSize = 0;
+        int totalLoadedBanks = 0;
+
+        IEnumerable<GameFile> soundBankFiles = Provider.Files.Values
+            .Where(file => string.Equals(file.Extension, "bnk", StringComparison.OrdinalIgnoreCase))
+            .Where(file => file.Path.StartsWith(baseWwiseAudioPath.Replace("\\", "/"), StringComparison.OrdinalIgnoreCase));
+
+        foreach (var soundbank in soundBankFiles)
+        {
+            if (totalLoadedBanks >= MAX_BANK_FILES)
+                break;
+
+            string fullPath = soundbank.Path;
+            string relPath = fullPath[baseWwiseAudioPath.Length..].TrimStart('/', '\\');
+
+            if (!TryLoadAndCacheSoundBank(fullPath, relPath, out var size))
+                continue;
+
+            if (totalLoadedSize + size > MAX_TOTAL_WWISE_SIZE)
+                break;
+
+            totalLoadedSize += size;
+            totalLoadedBanks += 1;
+        }
+
+        _completedWwiseFullBnkInit = true;
+    }
+
+    private bool TryLoadAndCacheSoundBank(string fullAbsolutePath, string relativePath, out long fileSize)
+    {
+        fileSize = 0;
+
+        if (_wwiseLoadedSoundBanks.Contains(relativePath))
+            return false;
+
+        if (!Provider.TrySaveAsset(fullAbsolutePath, out byte[] data))
+            return false;
+
+        fileSize = data.LongLength;
+
+        using var archive = new FByteArchive(relativePath, data);
+        var wwiseReader = new WwiseReader(archive);
+
+        if (wwiseReader.Hierarchies != null)
+        {
+            foreach (var h in wwiseReader.Hierarchies)
+            {
+                uint id = h.Data.Id;
+                if (!_wwiseHierarchyTables.ContainsKey(id))
+                    _wwiseHierarchyTables[id] = h;
+            }
+        }
+
+        if (wwiseReader.WwiseEncodedMedias != null)
+        {
+            foreach (var kv in wwiseReader.WwiseEncodedMedias)
+            {
+                if (!_wwiseEncodedMedia.ContainsKey(kv.Key))
+                    _wwiseEncodedMedia[kv.Key] = kv.Value;
+            }
+        }
+
+        _wwiseLoadedSoundBanks.Add(relativePath);
+        return true;
     }
 }
