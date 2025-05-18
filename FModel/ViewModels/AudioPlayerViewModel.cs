@@ -1,4 +1,4 @@
-﻿using CSCore;
+using CSCore;
 using CSCore.DSP;
 using CSCore.SoundOut;
 using CSCore.Streams;
@@ -558,6 +558,7 @@ public class AudioPlayerViewModel : ViewModel, ISource, IDisposable
         switch (SelectedAudioFile.Extension)
         {
             case "adpcm":
+            case "xvag":
             case "opus":
             case "wem":
             case "at9":

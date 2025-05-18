@@ -586,6 +586,7 @@ public class CUE4ParseViewModel : ViewModel
             case "manifest":
             case "uplugin":
             case "archive":
+            case "dnearchive": // Banishers: Ghosts of New Eden
             case "vmodule":
             case "uparam": // Steel Hunters
             case "verse":
@@ -594,6 +595,7 @@ public class CUE4ParseViewModel : ViewModel
             case "ini":
             case "txt":
             case "log":
+            case "lsd": // Days Gone
             case "bat":
             case "dat":
             case "cfg":
@@ -606,6 +608,7 @@ public class CUE4ParseViewModel : ViewModel
             case "csv":
             case "pem":
             case "tps":
+            case "tgc": // State of Decay 2
             case "lua":
             case "js":
             case "po":
@@ -664,10 +667,12 @@ public class CUE4ParseViewModel : ViewModel
 
                 break;
             }
+            case "xvag":
+            case "at9":
             case "wem":
             {
                 var data = Provider.SaveAsset(entry);
-                SaveAndPlaySound(entry.Path, "WEM", data);
+                SaveAndPlaySound(entry.PathWithoutExtension, entry.Extension, data);
 
                 break;
             }
