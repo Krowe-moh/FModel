@@ -35,6 +35,7 @@ using CUE4Parse.UE4.Readers;
 using CUE4Parse.UE4.Shaders;
 using CUE4Parse.UE4.Versions;
 using CUE4Parse.UE4.Wwise;
+using CUE4Parse.UE4.Wwise.Objects;
 using CUE4Parse.UE4.Wwise.Objects.HIRC;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
@@ -61,7 +62,6 @@ using SkiaSharp;
 using UE4Config.Parsing;
 using Application = System.Windows.Application;
 using FGuid = CUE4Parse.UE4.Objects.Core.Misc.FGuid;
-using CUE4Parse.UE4.Wwise.Objects;
 
 namespace FModel.ViewModels;
 
@@ -869,7 +869,7 @@ public class CUE4ParseViewModel : ViewModel
 
                         TryLoadAndCacheSoundBank(soundBankPath, soundBankName, out _);
 
-                        var visitedDecisionNodes = new HashSet<(uint parentHierarchyId, uint audioNodeId)>(); // To prevent infinite loops
+                        var visitedDecisionNodes = new HashSet<(uint parentHierarchyId, uint audioNodeId)>(); // To prevent infinite loops (shouldn't happen, just in case)
                         long parsedId = long.Parse(audioEventId);
                         uint parsedAudioEventId = (uint) parsedId;
                         if (_wwiseHierarchyTables.TryGetValue(parsedAudioEventId, out var eventHierarchy) &&
@@ -881,11 +881,24 @@ public class CUE4ParseViewModel : ViewModel
                                     actionHierarchy.Data is not HierarchyEventAction eventAction)
                                     continue;
 
+                                // TODO: If EventActionPlay points to different soundbank ID than we're currently in, use `wwiseReader.IdToString` to convert to bank name, serialize it, and continue traversing from there
+                                // This isn't needed if all soundbanks are loaded anyway
+
+                                //if (eventAction.EventActionType == EEventActionType.Play)
+                                //{
+                                //    var playActionData = (AkActionPlay) eventAction.ActionData;
+                                //    var bankId = playActionData.BankId;
+                                //    if (bankId != referencedSoundBankId) // I need to know what soundbank I'm currently in
+                                //    {
+                                //        var soundbankConvertedName = IdToString[referencedSoundBankId]; // I need IdToString from given soundbank
+                                //        TryLoadAndCacheSoundBank(Path.Combine(baseWwiseAudioPath, soundbankConvertedName + ".bnk"), soundbankConvertedName, out _);
+                                //    }
+                                //}
+
                                 TraverseAndSave(eventAction.ReferencedId);
                             }
                         }
 
-                        // TODO: If EventActionPlay points to different soundbank ID than we're currently in, use `wwiseReader.IdToString` to convert to bank name, serialize it, and continue traversing from there
                         void TraverseAndSave(uint id)
                         {
                             if (!_wwiseHierarchyTables.TryGetValue(id, out var hierarchy))
@@ -1227,7 +1240,16 @@ public class CUE4ParseViewModel : ViewModel
         foreach (var soundbank in soundBankFiles)
         {
             if (totalLoadedBanks >= MAX_BANK_FILES)
+            {
+#if DEBUG
+                Log.Debug("Reached maximum number of soundbank files to load. This game might require custom loading implementation (only necessary if audio event hierarchies are split across multiple soundbanks).");
+                FLogger.Append(ELog.Debug, () =>
+                {
+                    FLogger.Text("Max soundbank files loaded. Custom loading may be required if hierarchies are split across multiple banks.", Constants.WHITE);
+                });
+#endif
                 break;
+            }
 
             string fullPath = soundbank.Path;
             string relPath = fullPath[baseWwiseAudioPath.Length..].TrimStart('/', '\\');
@@ -1236,7 +1258,16 @@ public class CUE4ParseViewModel : ViewModel
                 continue;
 
             if (totalLoadedSize + size > MAX_TOTAL_WWISE_SIZE)
+            {
+#if DEBUG
+                Log.Debug("Reached maximum total size of soundbank files to load. This game might require custom loading implementation (only necessary if audio event hierarchies are split across multiple soundbanks).");
+                FLogger.Append(ELog.Debug, () =>
+                {
+                    FLogger.Text("Reached max total soundbank size. Custom loading may be required if hierarchies are split across multiple banks.", Constants.WHITE);
+                });
+#endif
                 break;
+            }
 
             totalLoadedSize += size;
             totalLoadedBanks += 1;
