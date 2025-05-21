@@ -59,7 +59,7 @@ public class BaseBundle : UCreator
                 foreach (var reward in rewards)
                 {
                     if (!reward.TryGetValue(out FSoftObjectPath itemDefinition, "ItemDefinition")) continue;
-                    quest.AddCompletionRequest(itemDefinition);
+                    quest.AddCompletionReward(itemDefinition);
                 }
                 _quests.Add(quest);
             }

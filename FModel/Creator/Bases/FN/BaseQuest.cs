@@ -44,12 +44,12 @@ public class BaseQuest : BaseIcon
         DisplayName = ReformatString(description, completionCount.ToString(), completionCount < 0);
     }
 
-    public void AddCompletionRequest(FSoftObjectPath itemDefinition)
+    public void AddCompletionReward(FSoftObjectPath itemDefinition)
     {
         _rewards.Add(itemDefinition.TryLoad(out UObject uObject) ? new Reward(uObject) : new Reward());
     }
 
-    public void AddCompletionRequest(int quantity, string reward)
+    public void AddCompletionReward(int quantity, string reward)
     {
         _rewards.Add(new Reward(quantity, reward));
     }
