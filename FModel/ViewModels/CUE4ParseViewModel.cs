@@ -193,7 +193,7 @@ public class CUE4ParseViewModel : ViewModel
                             {
                                 ChunkCacheDirectory = cacheDir,
                                 ManifestCacheDirectory = cacheDir,
-                                ChunkBaseUrl = "http://epicgames-download1.akamaized.net/Builds/Fortnite/CloudDir/",
+                                ChunkBaseUrl = "http://download.epicgames.com/Builds/Fortnite/CloudDir/",
                                 Decompressor = ManifestZlibngDotNetDecompressor.Decompress,
                                 DecompressorState = ZlibHelper.Instance,
                                 CacheChunksAsIs = false
@@ -206,7 +206,7 @@ public class CUE4ParseViewModel : ViewModel
                             {
                                 (manifest, _) = manifestInfo.DownloadAndParseAsync(manifestOptions,
                                     cancellationToken: cancellationToken,
-                                    elementManifestPredicate: static x => x.Uri.Host != "cloudflare.epicgamescdn.com"
+                                    elementManifestPredicate: static x => x.Uri.Host == "download.epicgames.com"
                                 ).GetAwaiter().GetResult();
                             }
                             catch (HttpRequestException ex)
