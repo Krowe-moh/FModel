@@ -116,7 +116,8 @@ public class CUE4ParseViewModel : ViewModel
     public SearchViewModel SearchVm { get; }
     public TabControlViewModel TabControl { get; }
     public ConfigIni IoStoreOnDemand { get; }
-    public WwiseProvider WwiseProvider { get; set; }
+    private Lazy<WwiseProvider> _wwiseProviderLazy;
+    public WwiseProvider WwiseProvider => _wwiseProviderLazy.Value;
 
     public CUE4ParseViewModel()
     {
@@ -265,6 +266,7 @@ public class CUE4ParseViewModel : ViewModel
             }
 
             Provider.Initialize();
+            _wwiseProviderLazy = new Lazy<WwiseProvider>(() => new WwiseProvider(Provider));
             Log.Information($"{Provider.Versions.Game} ({Provider.Versions.Platform}) | Archives: x{Provider.UnloadedVfs.Count} | AES: x{Provider.RequiredKeys.Count} | Loose Files: x{Provider.Files.Count}");
         });
     }
@@ -843,9 +845,7 @@ public class CUE4ParseViewModel : ViewModel
             }
             case UAkAudioEvent when isNone && pointer.Object.Value is UAkAudioEvent audioEvent:
             {
-                WwiseProvider ??= new WwiseProvider(Provider, audioEvent);
-
-                var extractedSounds = WwiseProvider.ExtractAudioEventSounds(audioEvent, UserSettings.Default.AudioDirectory);
+                var extractedSounds = WwiseProvider.ExtractAudioEventSounds(audioEvent);
                 foreach (var sound in extractedSounds)
                 {
                     SaveAndPlaySound(sound.OutputPath, sound.Extension, sound.Data);
