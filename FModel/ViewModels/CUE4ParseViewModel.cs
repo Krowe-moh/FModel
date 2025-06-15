@@ -163,6 +163,7 @@ public class CUE4ParseViewModel : ViewModel
 
         Provider.ReadScriptData = UserSettings.Default.ReadScriptData;
         Provider.ReadShaderMaps = UserSettings.Default.ReadShaderMaps;
+        Provider.ReadNaniteData = true;
 
         GameDirectory = new GameDirectoryViewModel();
         AssetsFolder = new AssetsFolderViewModel();
