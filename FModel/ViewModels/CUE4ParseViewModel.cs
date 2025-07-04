@@ -593,6 +593,7 @@ public class CUE4ParseViewModel : ViewModel
             case "uplugin":
             case "archive":
             case "dnearchive": // Banishers: Ghosts of New Eden
+            case "gitignore":
             case "vmodule":
             case "uparam": // Steel Hunters
             case "verse":
@@ -617,6 +618,8 @@ public class CUE4ParseViewModel : ViewModel
             case "tgc": // State of Decay 2
             case "lua":
             case "js":
+            case "po":
+            case "md":
             case "po":
             case "h":
             {
