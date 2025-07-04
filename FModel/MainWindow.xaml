@@ -468,7 +468,7 @@
                                 <controls:Breadcrumb Grid.Row="0" MaxWidth="{Binding ActualWidth, ElementName=AssetsSearchName}" HorizontalAlignment="Left" Margin="0 5 0 5"
                                                      DataContext="{Binding SelectedItem.PathAtThisPoint, ElementName=AssetsFolderName, FallbackValue='No/Directory/Detected/In/Folder'}"/>
 
-                                <ListBox Grid.Row="1" x:Name="AssetsListName" Style="{StaticResource AssetsListBox}" PreviewMouseDoubleClick="OnAssetsListMouseDoubleClick" PreviewKeyDown="OnPreviewKeyDown">
+                                <ListBox Grid.Row="1" x:Name="AssetsListName" Style="{StaticResource AssetsListBox}" PreviewMouseDoubleClick="OnAssetsListMouseDoubleClick" PreviewKeyDown="OnPreviewKeyDown" ContextMenuOpening="AssetsListName_ContextMenuOpening">
                                     <ListBox.ContextMenu>
                                         <ContextMenu DataContext="{Binding PlacementTarget, RelativeSource={RelativeSource Self}}">
                                             <MenuItem Header="Extract in New Tab" Command="{Binding DataContext.RightClickMenuCommand}">
@@ -490,6 +490,21 @@
                                                 <MenuItem.CommandParameter>
                                                     <MultiBinding Converter="{x:Static converters:MultiParameterConverter.Instance}">
                                                         <Binding Source="Assets_Show_Metadata" />
+                                                        <Binding Path="SelectedItems" />
+                                                    </MultiBinding>
+                                                </MenuItem.CommandParameter>
+                                                <MenuItem.Icon>
+                                                    <Viewbox Width="16" Height="16">
+                                                        <Canvas Width="24" Height="24">
+                                                            <Path Fill="{DynamicResource {x:Static adonisUi:Brushes.ForegroundBrush}}" Data="{StaticResource InfoIcon}" />
+                                                        </Canvas>
+                                                    </Viewbox>
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Name="Decompile" Header="Decompile Blueprint" Command="{Binding DataContext.RightClickMenuCommand}" Visibility="Collapsed">
+                                                <MenuItem.CommandParameter>
+                                                    <MultiBinding Converter="{x:Static converters:MultiParameterConverter.Instance}">
+                                                        <Binding Source="Assets_Decompile" />
                                                         <Binding Path="SelectedItems" />
                                                     </MultiBinding>
                                                 </MenuItem.CommandParameter>

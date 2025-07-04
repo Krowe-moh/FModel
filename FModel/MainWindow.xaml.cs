@@ -165,6 +165,18 @@ public partial class MainWindow
         await _threadWorkerView.Begin(cancellationToken => { _applicationView.CUE4Parse.ExtractSelected(cancellationToken, selectedItems); });
     }
 
+    private void AssetsListName_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        var listBox = sender as ListBox;
+        var contextMenu = listBox.ContextMenu;
+
+        var decompItem = contextMenu.Items
+            .OfType<MenuItem>()
+            .FirstOrDefault(mi => mi.Name == "Decompile");
+        
+        decompItem.Visibility = UserSettings.Default.ShowDecompileOption ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private async void OnFolderExtractClick(object sender, RoutedEventArgs e)
     {
         if (AssetsFolderName.SelectedItem is TreeItem folder)

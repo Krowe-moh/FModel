@@ -25,6 +25,20 @@ public static partial class StringExtensions
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int GetNameLineNumberText(this string s, string lineToFind)
+    {
+        using var reader = new StringReader(s);
+        var lineNum = 0;
+        while (reader.ReadLine() is { } line)
+        {
+            lineNum++;
+            if (line.Contains(lineToFind, StringComparison.OrdinalIgnoreCase))
+                return lineNum;
+        }
+        return -1;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int GetNameLineNumber(this string s, string lineToFind)
     {
         if (KismetRegex().IsMatch(lineToFind))
