@@ -620,7 +620,6 @@ public class CUE4ParseViewModel : ViewModel
             case "js":
             case "po":
             case "md":
-            case "po":
             case "h":
             {
                 var data = Provider.SaveAsset(entry);
