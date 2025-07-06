@@ -3,10 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
-using CUE4Parse.FileProvider;
-using CUE4Parse.FileProvider.Objects;
-using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Objects.Properties;
 using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Kismet;
@@ -16,14 +12,12 @@ using CUE4Parse.UE4.Objects.Engine.Ai;
 using CUE4Parse.UE4.Objects.Engine.GameFramework;
 using CUE4Parse.UE4.Objects.GameplayTags;
 using CUE4Parse.UE4.Objects.UObject;
-using FModel.Settings;
-using Microsoft.VisualBasic.Logging;
 
 namespace FModel.Extensions;
 
 public static class KismetExtensions
 {
-    public static string GetPrefix(string? type, string? extra = "")
+    public static string GetPrefix(string type, string extra = "")
     {
         return type switch
         {
@@ -43,18 +37,9 @@ public static class KismetExtensions
     {
         string typeName = field.GetType().Name;
         int suffixIndex = typeName.IndexOf("Property", StringComparison.Ordinal);
-        if (suffixIndex < 0)
-            return typeName;
-        return typeName.Substring(1, suffixIndex - 1);
+        return suffixIndex < 0 ? typeName : typeName.Substring(1, suffixIndex - 1);
     }
-    public static string GetUnknownFieldType(FField field)
-    {
-        string typeName = field.GetType().Name;
-        int suffixIndex = typeName.IndexOf("Property", StringComparison.Ordinal);
-        if (suffixIndex < 0)
-            return typeName;
-        return typeName.Substring(1, suffixIndex - 1);
-    }
+
     public static string GetPropertyType(object? property)
     {
         if (property is null)
@@ -62,33 +47,33 @@ public static class KismetExtensions
 
         return property switch
         {
-            FIntProperty => "int",
-            FInt8Property => "int8",
-            FInt16Property => "int16",
-            FInt64Property => "int64",
-            FUInt16Property => "uint16",
-            FUInt32Property => "uint32",
-            FUInt64Property => "uint64",
-            FBoolProperty or Boolean => "bool",
-            FStrProperty => "FString",
-            FFloatProperty or Single => "float",
-            FDoubleProperty or Double => "double",
+            FIntProperty or int => "int",
+            FInt8Property or byte => "int8",
+            FInt16Property or short => "int16",
+            FInt64Property or long => "int64",
+            FUInt16Property or ushort => "uint16",
+            FUInt32Property or uint => "uint32",
+            FUInt64Property or ulong => "uint64",
+            FBoolProperty or bool => "bool",
+            FStrProperty or string => "FString",
+            FFloatProperty or float => "float",
+            FDoubleProperty or double => "double",
             FObjectProperty objct => property switch
             {
-                FClassProperty clss => $"{clss.MetaClass?.Name ?? "UNKNOWN"}",
-                FSoftClassProperty softClass => $"{softClass.MetaClass?.Name ?? "UNKNOWN"}",
-                _ => objct.PropertyClass?.Name ?? "UNKNOWN"
+                FClassProperty clss => $"{clss.MetaClass?.Name ?? "UKN_ObjectMetaClass"} Class",
+                FSoftClassProperty softClass => $"{softClass.MetaClass?.Name ?? "UKN_ObjectMetaClass"} Class (soft)",
+                _ => objct.PropertyClass?.Name ?? "UKN_ObjectPropertyClass"
             },
-            FPackageIndex pkg => pkg?.ResolvedObject?.Class?.Name.ToString() ?? "Package",
-            FName fme => fme.PlainText.Contains("::") ? fme.PlainText.Split("::")[0] : fme.PlainText ?? "FName",
-            FEnumProperty enm => enm.Enum?.Name.ToString() ?? "Enum",
-            FByteProperty bt => bt.Enum.ResolvedObject?.Name.Text ?? "Byte",
-            FInterfaceProperty intrfc => $"{intrfc.InterfaceClass.Name} interface",
-            FStructProperty strct => strct.Struct.ResolvedObject?.Name.Text ?? "Struct",
+            FPackageIndex pkg => pkg.ResolvedObject?.Class?.Name.ToString() ?? "Package",
+            FName fme => fme.PlainText.Contains("::") ? fme.PlainText.Split("::")[0] : fme.PlainText,
+            FEnumProperty enm => enm.Enum?.Name ?? "Enum",
+            FByteProperty bt => bt.Enum?.ResolvedObject?.Name.Text ?? "Byte",
+            FInterfaceProperty intrfc => $"{intrfc.InterfaceClass?.Name ?? "UKN_InterfaceClass"} interface",
+            FStructProperty strct => strct.Struct?.ResolvedObject?.Name.Text ?? "Struct",
             FFieldPathProperty fieldPath => $"{fieldPath.PropertyClass.Text} field path",
-            FDelegateProperty dlgt => $"{dlgt.SignatureFunction?.Name ?? "UNKNOWN"} (Delegate)",
-            FMulticastDelegateProperty mdlgt => $"{mdlgt.SignatureFunction?.Name ?? "UNKNOWN"} (MulticastDelegateProperty)",
-            FMulticastInlineDelegateProperty midlgt => $"{midlgt.SignatureFunction?.Name ?? "UNKNOWN"} (MulticastInlineDelegateProperty)",
+            FDelegateProperty dlgt => $"{dlgt.SignatureFunction?.Name ?? "UKN_SignatureFunction"} (Delegate)",
+            FMulticastDelegateProperty mdlgt => $"{mdlgt.SignatureFunction?.Name ?? "UKN_SignatureFunction"} (MulticastDelegateProperty)",
+            FMulticastInlineDelegateProperty midlgt => $"{midlgt.SignatureFunction?.Name ?? "UKN_SignatureFunction"} (MulticastInlineDelegateProperty)",
             _ => GetUnknownFieldType(property)
         };
     }
@@ -99,31 +84,13 @@ public static class KismetExtensions
 
         return property switch
         {
-            FIntProperty => "int",
-            FBoolProperty => "bool",
-            FStrProperty => "FString",
-            FFloatProperty => "float",
-            FDoubleProperty => "double",
-            FObjectProperty objct => property switch
-            {
-                FClassProperty clss => $"{clss.MetaClass?.Name ?? "UNKNOWN"} Class",
-                FSoftClassProperty softClass => $"{softClass.MetaClass?.Name ?? "UNKNOWN"} Class (soft)",
-                _ => objct.PropertyClass?.Name ?? "UNKNOWN"
-            },
-            FEnumProperty enm => enm.Enum?.Name.ToString() ?? "Enum",
             FSetProperty set => $"TSet<{GetPrefix(set.ElementProp.GetType().Name)}{GetPropertyType(set.ElementProp)}{(set.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) || set.PropertyFlags.HasFlag(EPropertyFlags.ContainsInstancedReference) ? "*" : string.Empty)}>",
-            FByteProperty bt => bt.Enum.ResolvedObject?.Name.Text ?? "Byte",
-            FInterfaceProperty intrfc => $"{intrfc.InterfaceClass.Name} interface",
-            FStructProperty strct => strct.Struct.ResolvedObject?.Name.Text ?? "Struct",
-            FFieldPathProperty fieldPath => $"{fieldPath.PropertyClass.Text} field path",
-            FDelegateProperty dlgt => $"{dlgt.SignatureFunction?.Name ?? "UNKNOWN"} (Delegate)",
             FMapProperty map => $"TMap<{GetPrefix(map.ValueProp.GetType().Name)}{GetPropertyType(map.KeyProp)}, {GetPrefix(map.ValueProp.GetType().Name)}{GetPropertyType(map.ValueProp)}{(map.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) || map.PropertyFlags.HasFlag(EPropertyFlags.ContainsInstancedReference) ? "*" : string.Empty)}>",
-            FMulticastDelegateProperty mdlgt => $"{mdlgt.SignatureFunction?.Name ?? "UNKNOWN"} (MulticastDelegateProperty)",
-            FMulticastInlineDelegateProperty midlgt => $"{midlgt.SignatureFunction?.Name ?? "UNKNOWN"} (MulticastInlineDelegateProperty)",
             FArrayProperty array => $"TArray<{GetPrefix(array.Inner.GetType().Name)}{GetPropertyType(array.Inner)}{(array.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) || array.PropertyFlags.HasFlag(EPropertyFlags.ContainsInstancedReference) || GetPropertyProperty(array.Inner.GetType().Name) ? "*" : string.Empty)}>",
-            _ => GetUnknownFieldType(property)
+            _ => GetPropertyType((object)property)
         };
     }
+
     public static bool GetPropertyProperty(object? property)
     {
         if (property is null)
@@ -131,21 +98,11 @@ public static class KismetExtensions
 
         return property switch
         {
-            FObjectProperty objct => true,
+            FObjectProperty => true,
             _ => false
         };
     }
-    public static bool GetPropertyProperty(FProperty? property)
-    {
-        if (property is null)
-            return false;
 
-        return property switch
-        {
-            FObjectProperty objct => true,
-            _ => false
-        };
-    }
     public static string FormatStructFallback(FStructFallback fallback)
     {
         if (fallback.Properties.Count == 0)
@@ -155,44 +112,48 @@ public static class KismetExtensions
         {
             string tagDataFormatted;
 
-            if (tag.Tag is TextProperty text)
+            switch (tag.Tag)
             {
-                tagDataFormatted = $"\"{text.Value.Text}\"";
-            }
-            else if (tag.Tag is NameProperty name)
-            {
-                tagDataFormatted = $"\"{name.Value.Text}\"";
-            }
-            else if (tag.Tag is ObjectProperty obj)
-            {
-                tagDataFormatted = $"\"{obj.Value}\"";
-            }
-            else if (tag.Tag.GenericValue is FScriptStruct innerStruct && innerStruct.StructType is FStructFallback nestedFallback)
-            {
-                if (nestedFallback.Properties.Count > 0)
+                case TextProperty text:
+                    tagDataFormatted = $"\"{text.Value.Text}\"";
+                    break;
+                case NameProperty name:
+                    tagDataFormatted = $"\"{name.Value.Text}\"";
+                    break;
+                case ObjectProperty obj:
+                    tagDataFormatted = $"\"{obj.Value}\"";
+                    break;
+                default:
                 {
-                    tagDataFormatted = "{ " + string.Join(", ",
-                        nestedFallback.Properties.Select(nested =>
+                    if (tag.Tag.GenericValue is FScriptStruct { StructType: FStructFallback nestedFallback })
+                    {
+                        if (nestedFallback.Properties.Count > 0)
                         {
-                            string nestedVal;
-                            if (nested.Tag is TextProperty textProp)
-                                nestedVal = $"\"{textProp.Value.Text}\"";
-                            else if (nested.Tag is NameProperty nameProp)
-                                nestedVal = $"\"{nameProp.Value.Text}\"";
-                            else
-                                nestedVal = $"\"{nested.Tag.GenericValue}\"";
+                            tagDataFormatted = "{ " + string.Join(", ",
+                                nestedFallback.Properties.Select(nested =>
+                                {
+                                    string nestedVal = nested.Tag switch
+                                    {
+                                        TextProperty textProp => $"\"{textProp.Value.Text}\"",
+                                        NameProperty nameProp => $"\"{nameProp.Value.Text}\"",
+                                        _ => $"\"{nested.Tag.GenericValue}\""
+                                    };
 
-                            return $"\"{nested.Name}\": {nestedVal}";
-                        })) + " }";
+                                    return $"\"{nested.Name}\": {nestedVal}";
+                                })) + " }";
+                        }
+                        else
+                        {
+                            tagDataFormatted = "{}";
+                        }
+                    }
+                    else
+                    {
+                        tagDataFormatted = tag.Tag.GenericValue != null ? $"\"{tag.Tag.GenericValue}\"" : "{}";
+                    }
+
+                    break;
                 }
-                else
-                {
-                    tagDataFormatted = "{}";
-                }
-            }
-            else
-            {
-                tagDataFormatted = tag.Tag.GenericValue != null ? $"\"{tag.Tag.GenericValue}\"" : "{}";
             }
 
             return $"\t\t{{ \"{tag.Name}\": {tagDataFormatted} }}";
@@ -200,6 +161,7 @@ public static class KismetExtensions
 
         return "[\n" + string.Join(",\n", tags) + "\n\t]";
     }
+
     public static string FormatGameplayTagContainer(FGameplayTagContainer container)
     {
         var tags = container.GameplayTags.ToList();
@@ -210,49 +172,31 @@ public static class KismetExtensions
             _ => "[\n" + string.Join(",\n", tags.Select(tag => $"\t\t\"{tag.TagName}\"")) + "\n\t]"
         };
     }
+
     public static string FormatStructType(object structType)
     {
-        switch (structType)
+        return structType switch
         {
-            case FVector vector:
-                return $"FVector({vector.X}, {vector.Y}, {vector.Z})";
-            case FVector2D vector2D:
-                return $"FVector2D({vector2D.X}, {vector2D.Y})";
-            case FRotator rotator:
-                return $"FRotator({rotator.Pitch}, {rotator.Yaw}, {rotator.Roll})";
-            case FQuat quat:
-                return $"FQuat({quat.X}, {quat.Y}, {quat.Z}, {quat.W})";
-            case FGuid guid:
-                return $"FGuid({guid.A}, {guid.B}, {guid.C}, {guid.D})";
-            case FColor color:
-                return $"FColor({color.R}, {color.G}, {color.B}, {color.A})";
-            case FLinearColor linearColor:
-                return $"FLinearColor({linearColor.R}, {linearColor.G}, {linearColor.B}, {linearColor.A})";
-            case FSoftObjectPath path:
-                return $"FSoftObjectPath({path.AssetPathName})";
-            case FUniqueNetIdRepl netId:
-                return $"FUniqueNetIdRepl({netId.UniqueNetId})";
-            case FNavAgentSelector agent:
-                return $"FNavAgentSelector({agent.PackedBits})";
-            case FBox box:
-                return $"FBox(FVector({box.Max.X}, {box.Max.Y}, {box.Max.Z}), FVector({box.Min.X}, {box.Min.Y}, {box.Min.Z}))";
-            case FBox2D box2D:
-                return $"FBox2D(FVector2D({box2D.Max.X}, {box2D.Max.Y}), FVector2D({box2D.Min.X}, {box2D.Min.Y}))";
-            case TIntVector3<int> intVec:
-                return $"FVector({intVec.X}, {intVec.Y}, {intVec.Z})";
-            case TIntVector3<float> floatVec:
-                return $"FVector({floatVec.X}, {floatVec.Y}, {floatVec.Z})";
-            case TIntVector2<float> floatVec2:
-                return $"FVector2D({floatVec2.X}, {floatVec2.Y})";
-            case FDateTime dateTime:
-                return $"FDateTime({dateTime})";
-            case FStructFallback fallback:
-                return FormatStructFallback(fallback);
-            case FGameplayTagContainer tagContainer:
-                return FormatGameplayTagContainer(tagContainer);
-            default:
-                return structType?.ToString() ?? "Issue here";
-        }
+            FVector vector => $"FVector({vector.X}, {vector.Y}, {vector.Z})",
+            FVector2D vector2D => $"FVector2D({vector2D.X}, {vector2D.Y})",
+            FRotator rotator => $"FRotator({rotator.Pitch}, {rotator.Yaw}, {rotator.Roll})",
+            FQuat quat => $"FQuat({quat.X}, {quat.Y}, {quat.Z}, {quat.W})",
+            FGuid guid => $"FGuid({guid.A}, {guid.B}, {guid.C}, {guid.D})",
+            FColor color => $"FColor({color.R}, {color.G}, {color.B}, {color.A})",
+            FLinearColor linearColor => $"FLinearColor({linearColor.R}, {linearColor.G}, {linearColor.B}, {linearColor.A})",
+            FSoftObjectPath path => $"FSoftObjectPath({path.AssetPathName})",
+            FUniqueNetIdRepl netId => $"FUniqueNetIdRepl({netId.UniqueNetId})",
+            FNavAgentSelector agent => $"FNavAgentSelector({agent.PackedBits})",
+            FBox box => $"FBox(FVector({box.Max.X}, {box.Max.Y}, {box.Max.Z}), FVector({box.Min.X}, {box.Min.Y}, {box.Min.Z}))",
+            FBox2D box2D => $"FBox2D(FVector2D({box2D.Max.X}, {box2D.Max.Y}), FVector2D({box2D.Min.X}, {box2D.Min.Y}))",
+            TIntVector3<int> intVec => $"FVector({intVec.X}, {intVec.Y}, {intVec.Z})",
+            TIntVector3<float> floatVec => $"FVector({floatVec.X}, {floatVec.Y}, {floatVec.Z})",
+            TIntVector2<float> floatVec2 => $"FVector2D({floatVec2.X}, {floatVec2.Y})",
+            FDateTime dateTime => $"FDateTime({dateTime})",
+            FStructFallback fallback => FormatStructFallback(fallback),
+            FGameplayTagContainer tagContainer => FormatGameplayTagContainer(tagContainer),
+            _ => structType?.ToString() ?? "Issue here"
+        };
     }
 
     private static string ProcessTextProperty(FKismetPropertyPointer property, bool temp)
@@ -263,12 +207,14 @@ public static class KismetExtensions
         }
         return string.Join('.', property.New.Path.Select(n => n.Text)).Replace(" ", "");
     }
+
     public static void ProcessExpression(EExprToken token, KismetExpression expression, StringBuilder outputBuilder, List<int> jumpCodeOffsets, bool isParameter = false)
     {
         if (jumpCodeOffsets.Contains(expression.StatementIndex))
         {
             outputBuilder.Append("\t\tLabel_" + expression.StatementIndex + ":\n");
         }
+
         switch (token)
         {
             case EExprToken.EX_LetValueOnPersistentFrame:
@@ -406,8 +352,7 @@ public static class KismetExtensions
                     {
                         ProcessExpression(oppMath.Token, oppMath, outputBuilder, jumpCodeOffsets, true);
                     }
-                    else
-                    {}
+
                     break;
                 }
             case EExprToken.EX_PopExecutionFlowIfNot:
@@ -423,7 +368,7 @@ public static class KismetExtensions
                 {
                     EX_Cast op = (EX_Cast) expression;// support CST_ObjectToInterface when I have an example of how it works
 
-                    if (ECastToken.CST_ObjectToBool == op.ConversionType || ECastToken.CST_InterfaceToBool == op.ConversionType)
+                    if (op.ConversionType is ECastToken.CST_ObjectToBool or ECastToken.CST_InterfaceToBool)
                     {
                         outputBuilder.Append("(bool)");
                     }
@@ -455,7 +400,7 @@ public static class KismetExtensions
                     }
                     outputBuilder.Append(op.Elements.Length < 1 ? "  " : ' ');
 
-                    outputBuilder.Append("}");
+                    outputBuilder.Append('}');
                     break;
                 }
             case EExprToken.EX_SetArray:
@@ -575,8 +520,8 @@ public static class KismetExtensions
                 {
                     EX_SwitchValue op = (EX_SwitchValue) expression;
 
-                    bool useTernary = op.Cases.Length <= 2
-                        && op.Cases.All(c => c.CaseIndexValueTerm.Token == EExprToken.EX_True || c.CaseIndexValueTerm.Token == EExprToken.EX_False);
+                    bool useTernary = op.Cases.Length <= 2 &&
+                                      op.Cases.All(c => c.CaseIndexValueTerm.Token is EExprToken.EX_True or EExprToken.EX_False);
 
                     if (useTernary)
                     {
@@ -644,9 +589,9 @@ public static class KismetExtensions
                 {
                     EX_ArrayGetByRef op = (EX_ArrayGetByRef) expression; // FortniteGame/Plugins/GameFeatures/FM/PilgrimCore/Content/Player/Components/BP_PilgrimPlayerControllerComponent.uasset
                     ProcessExpression(op.ArrayVariable.Token, op.ArrayVariable, outputBuilder, jumpCodeOffsets, true);
-                    outputBuilder.Append("[");
+                    outputBuilder.Append('[');
                     ProcessExpression(op.ArrayIndex.Token, op.ArrayIndex, outputBuilder, jumpCodeOffsets);
-                    outputBuilder.Append("]");
+                    outputBuilder.Append(']');
                     break;
                 }
             case EExprToken.EX_MetaCast:
@@ -658,14 +603,14 @@ public static class KismetExtensions
                     EX_CastBase op = (EX_CastBase) expression;
                     outputBuilder.Append($"Cast<U{op.ClassPtr.Name}*>(");// m?
                     ProcessExpression(op.Target.Token, op.Target, outputBuilder, jumpCodeOffsets, true);
-                    outputBuilder.Append(")");
+                    outputBuilder.Append(')');
                     break;
                 }
             case EExprToken.EX_StructConst:
                 {
                     EX_StructConst op = (EX_StructConst) expression;
                     outputBuilder.Append($"{GetPrefix(op.Struct.GetType().Name)}{op.Struct.Name}");
-                    outputBuilder.Append($"(");
+                    outputBuilder.Append('(');
                     for (int i = 0; i < op.Properties.Length; i++)
                     {
                         var property = op.Properties[i];
@@ -673,19 +618,19 @@ public static class KismetExtensions
                         if (i < op.Properties.Length - 1 && property.Token != EExprToken.EX_ArrayConst)
                             outputBuilder.Append(", ");
                     }
-                    outputBuilder.Append($")");
+                    outputBuilder.Append(')');
                     break;
                 }
             case EExprToken.EX_ObjectConst:
                 {
                     EX_ObjectConst op = (EX_ObjectConst) expression;
-                    outputBuilder.Append(!isParameter ? "\t\tFindObject<" : outputBuilder.ToString().EndsWith("\n") ? "\t\tFindObject<" : "FindObject<"); // please don't complain, i know this is bad but i MUST do it.
-                    string classString = op?.Value?.ResolvedObject?.Class?.ToString()?.Replace("'", "");
+                    outputBuilder.Append(!isParameter ? "\t\tFindObject<" : outputBuilder.ToString().EndsWith('\n') ? "\t\tFindObject<" : "FindObject<"); // please don't complain, i know this is bad but i MUST do it.
+                    string classString = op.Value.ResolvedObject?.Class?.ToString().Replace("'", "");
 
-                    if (classString?.Contains(".") == true)
+                    if (classString?.Contains('.') == true)
                     {
 
-                        outputBuilder.Append(GetPrefix(op?.Value?.ResolvedObject?.Class?.GetType().Name) + classString.Split(".")[1]);
+                        outputBuilder.Append(GetPrefix(op?.Value?.ResolvedObject?.Class?.GetType().Name) + classString.Split('.')[1]);
                     }
                     else
                     {
@@ -698,15 +643,7 @@ public static class KismetExtensions
                     var name = op?.Value?.Name ?? string.Empty;
 
                     outputBuilder.Append(outerString.Replace(outerClassString, "") + "." + name);
-
-                    if (isParameter)
-                    {
-                        outputBuilder.Append("\")");
-                    }
-                    else
-                    {
-                        outputBuilder.Append("\")");
-                    }
+                    outputBuilder.Append("\")");
                     break;
                 }
             case EExprToken.EX_BindDelegate:
@@ -714,23 +651,23 @@ public static class KismetExtensions
                     EX_BindDelegate op = (EX_BindDelegate) expression;
                     outputBuilder.Append("\t\t");
                     ProcessExpression(op.Delegate.Token, op.Delegate, outputBuilder, jumpCodeOffsets);
-                    outputBuilder.Append($".BindUFunction(");
+                    outputBuilder.Append(".BindUFunction(");
                     ProcessExpression(op.ObjectTerm.Token, op.ObjectTerm, outputBuilder, jumpCodeOffsets);
                     outputBuilder.Append($", \"{op.FunctionName}\"");
-                    outputBuilder.Append($");\n\n");
+                    outputBuilder.Append(");\n\n");
                     break;
                 }
             // all the delegate functions suck
             case EExprToken.EX_AddMulticastDelegate:
                 {
                     EX_AddMulticastDelegate op = (EX_AddMulticastDelegate) expression;
-                    if (op.Delegate.Token == EExprToken.EX_LocalVariable || op.Delegate.Token == EExprToken.EX_InstanceVariable)
+                    if (op.Delegate.Token is EExprToken.EX_LocalVariable or EExprToken.EX_InstanceVariable)
                     {
                         outputBuilder.Append("\t\t");
                         ProcessExpression(op.Delegate.Token, op.Delegate, outputBuilder, jumpCodeOffsets, true);
                         outputBuilder.Append(".AddDelegate(");
                         ProcessExpression(op.DelegateToAdd.Token, op.DelegateToAdd, outputBuilder, jumpCodeOffsets);
-                        outputBuilder.Append($");\n\n");
+                        outputBuilder.Append(");\n\n");
                     }
                     else if (op.Delegate.Token != EExprToken.EX_Context)
                     {}
@@ -743,23 +680,25 @@ public static class KismetExtensions
                         //ProcessExpression(opp.ContextExpression.Token, opp.ContextExpression, outputBuilder, jumpCodeOffsets);
                         outputBuilder.Append(".AddDelegate(");
                         ProcessExpression(op.DelegateToAdd.Token, op.DelegateToAdd, outputBuilder, jumpCodeOffsets);
-                        outputBuilder.Append($");\n\n");
+                        outputBuilder.Append(");\n\n");
                     }
                     break;
                 }
             case EExprToken.EX_RemoveMulticastDelegate: // everything here has been guessed not compared to actual UE but does work fine and displays all information
                 {
                     EX_RemoveMulticastDelegate op = (EX_RemoveMulticastDelegate) expression;
-                    if (op.Delegate.Token == EExprToken.EX_LocalVariable || op.Delegate.Token == EExprToken.EX_InstanceVariable)
+                    if (op.Delegate.Token is EExprToken.EX_LocalVariable or EExprToken.EX_InstanceVariable)
                     {
                         outputBuilder.Append("\t\t");
                         ProcessExpression(op.Delegate.Token, op.Delegate, outputBuilder, jumpCodeOffsets, true);
                         outputBuilder.Append(".RemoveDelegate(");
                         ProcessExpression(op.DelegateToAdd.Token, op.DelegateToAdd, outputBuilder, jumpCodeOffsets);
-                        outputBuilder.Append($");\n\n");
+                        outputBuilder.Append(");\n\n");
                     }
                     else if (op.Delegate.Token != EExprToken.EX_Context)
-                    {}
+                    {
+
+                    }
                     else
                     {
                         EX_Context opp = (EX_Context) op.Delegate;
@@ -769,7 +708,7 @@ public static class KismetExtensions
                         ProcessExpression(opp.ContextExpression.Token, opp.ContextExpression, outputBuilder, jumpCodeOffsets);
                         outputBuilder.Append(".RemoveDelegate(");
                         ProcessExpression(op.DelegateToAdd.Token, op.DelegateToAdd, outputBuilder, jumpCodeOffsets);
-                        outputBuilder.Append($");\n\n");
+                        outputBuilder.Append(");\n\n");
                     }
                     break;
                 }
@@ -800,10 +739,12 @@ public static class KismetExtensions
                                 outputBuilder.Append(", ");
                             }
                         }
-                        outputBuilder.Append($");\n\n");
+                        outputBuilder.Append(");\n\n");
                     }
                     else if (op.Delegate.Token != EExprToken.EX_Context)
-                    {}
+                    {
+
+                    }
                     else
                     {
                         outputBuilder.Append("\t\t");
@@ -819,7 +760,7 @@ public static class KismetExtensions
                                 outputBuilder.Append(", ");
                             }
                         }
-                        outputBuilder.Append($");\n\n");
+                        outputBuilder.Append(");\n\n");
                     }
                     break;
                 }
@@ -827,7 +768,7 @@ public static class KismetExtensions
             case EExprToken.EX_Context:
                 {
                     EX_Context op = (EX_Context) expression;
-                    outputBuilder.Append(outputBuilder.ToString().EndsWith("\n") ? "\t\t" : "");
+                    outputBuilder.Append(outputBuilder.ToString().EndsWith('\n') ? "\t\t" : "");
                     ProcessExpression(op.ObjectExpression.Token, op.ObjectExpression, outputBuilder, jumpCodeOffsets, true);
 
                     outputBuilder.Append("->");
@@ -847,7 +788,7 @@ public static class KismetExtensions
                     {
                         outputBuilder.Append("->");
                         ProcessExpression(op.ContextExpression.Token, op.ContextExpression, outputBuilder, jumpCodeOffsets, true);
-                        outputBuilder.Append($";\n\n");
+                        outputBuilder.Append(";\n\n");
                     }
                     break;
                 }
@@ -883,11 +824,11 @@ public static class KismetExtensions
                     ProcessExpression(op.Assignment.Token, op.Assignment, outputBuilder, jumpCodeOffsets, true);
                     if (!isParameter || op.Assignment.Token == EExprToken.EX_LocalFinalFunction || op.Assignment.Token == EExprToken.EX_FinalFunction || op.Assignment.Token == EExprToken.EX_CallMath)
                     {
-                        outputBuilder.Append($";\n\n");
+                        outputBuilder.Append(";\n\n");
                     }
                     else
                     {
-                        outputBuilder.Append($";");
+                        outputBuilder.Append(';');
                     }
                     break;
                 }
@@ -941,7 +882,7 @@ public static class KismetExtensions
                 {
                     EX_Return op = (EX_Return) expression;
                     bool check = op.ReturnExpression.Token == EExprToken.EX_Nothing;
-                    outputBuilder.Append($"\t\treturn");
+                    outputBuilder.Append("\t\treturn");
                     if (!check)
                         outputBuilder.Append(' ');
                     ProcessExpression(op.ReturnExpression.Token, op.ReturnExpression, outputBuilder, jumpCodeOffsets, true);

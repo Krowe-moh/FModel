@@ -960,15 +960,11 @@ public class CUE4ParseViewModel : ViewModel
 
     public void Decompile(GameFile entry)
     {
-        var package = Provider.LoadPackage(entry);
-
-        if (TabControl.CanAddTabs)
-            TabControl.AddTab(entry);
-        else
-            TabControl.SelectedTab.SoftReset(entry);
+        if (TabControl.CanAddTabs) TabControl.AddTab(entry);
+        else TabControl.SelectedTab.SoftReset(entry);
 
         TabControl.SelectedTab.TitleExtra = "Decompiled";
-        TabControl.SelectedTab.Highlighter = AvalonExtensions.HighlighterSelector("txt");
+        TabControl.SelectedTab.Highlighter = AvalonExtensions.HighlighterSelector("cpp");
 
         var pkg = Provider.LoadPackage(entry);
 
@@ -979,472 +975,247 @@ public class CUE4ParseViewModel : ViewModel
             if (pointer?.Object is null)
                 continue;
 
-            var dummy = ((AbstractUePackage) pkg).ConstructObject(
-                pointer.Class?.Object?.Value as UStruct, pkg);
-            switch (dummy)
+            var dummy = ((AbstractUePackage) pkg).ConstructObject(pointer.Class?.Object?.Value as UStruct, pkg);
+            if (dummy is not UBlueprintGeneratedClass || pointer.Object.Value is not UBlueprintGeneratedClass blueprint)
+                continue;
+
+            var type = blueprint.GetType().Name;
+            var typePrefix = KismetExtensions.GetPrefix(type);
+            var className = blueprint.Name;
+            var superClassName = blueprint?.SuperStruct?.Name ?? string.Empty;
+
+            outputBuilder.AppendLine($"class {typePrefix}{className} : public {typePrefix}{superClassName}\n{{\npublic:");
+
+            if (!blueprint.ClassDefaultObject.TryLoad(out var bpObject))
+                continue;
+
+            var strings = new List<string>();
+            foreach (var property in bpObject.Properties)
             {
-                case UBlueprintGeneratedClass _:
-                case UVerseClass _:
+                var propertyName = property.Name.ToString();
+                var propertyValue = property.Tag?.GenericValue;
+                strings.Add(propertyName);
+                string placeholder = $"{propertyName}placeholder";
+
+                void ShouldAppend(string value)
+                {
+                    if (outputBuilder.ToString().Contains(placeholder))
                     {
-                        var blueprintGeneratedClass = pkg.ExportsLazy.FirstOrDefault(e => e.Value is UBlueprintGeneratedClass)?.Value as UBlueprintGeneratedClass;
-                        var verseClass = pkg.ExportsLazy.Where(export => export.Value is UVerseClass).Select(export => (UVerseClass) export.Value).FirstOrDefault();
-
-                        var stringsarray = new List<string>();
-                        if (blueprintGeneratedClass != null)
-                        {
-                            {
-                                var mainClass = blueprintGeneratedClass?.Name ?? verseClass?.Name;
-                                var superStructName = blueprintGeneratedClass?.SuperStruct?.Name ?? verseClass?.SuperStruct?.Name ?? string.Empty;
-                                outputBuilder.AppendLine(
-                                $"class {KismetExtensions.GetPrefix(blueprintGeneratedClass?.GetType().Name ?? verseClass?.GetType().Name)}{mainClass} : public {KismetExtensions.GetPrefix(blueprintGeneratedClass?.GetType().Name ?? verseClass?.GetType().Name)}{superStructName}\n{{\npublic:");
-
-                                foreach (var export in pkg.ExportsLazy)
-                                {
-                                    if (export.Value is not UBlueprintGeneratedClass)
-
-                                        if (export.Value.Name.StartsWith("Default__") &&
-                                            export.Value.Name.EndsWith(mainClass ?? string.Empty))
-                                        {
-                                            var exportObject = export.Value;
-                                            foreach (var key in exportObject.Properties)
-                                            {
-                                                stringsarray.Add(key.Name.PlainText);
-                                                string placeholder = $"{key.Name}placenolder";
-                                                string result = key.Tag.GenericValue.ToString();
-                                                string keyName = key.Name.PlainText.Replace(" ", "");
-
-                                                var propertyTag = key.Tag.GetValue(typeof(object));
-
-                                                void ShouldAppend(string? value)
-                                                {
-                                                    if (value == null)
-                                                        return;
-                                                    if (outputBuilder.ToString().Contains(placeholder))
-                                                    {
-                                                        outputBuilder.Replace(placeholder, value);
-                                                    }
-                                                    else
-                                                    {
-                                                        outputBuilder.AppendLine(
-                                                            $"\t{KismetExtensions.GetPropertyType(propertyTag)} {keyName} = {value};");
-                                                    }
-                                                }
-
-                                                if (key.Tag.GenericValue is FScriptStruct structTag)
-                                                {
-                                                    if (structTag.StructType is FVector vector)
-                                                    {
-                                                        ShouldAppend(
-                                                            $"FVector({vector.X}, {vector.Y}, {vector.Z})");
-                                                    }
-                                                    else if (structTag.StructType is FGuid guid)
-                                                    {
-                                                        ShouldAppend(
-                                                            $"FGuid({guid.A}, {guid.B}, {guid.C}, {guid.D})");
-                                                    }
-                                                    else if (structTag.StructType is TIntVector3<int> vector3)
-                                                    {
-                                                        ShouldAppend(
-                                                            $"FVector({vector3.X}, {vector3.Y}, {vector3.Z})");
-                                                    }
-                                                    else if (structTag.StructType is TIntVector3<float>
-                                                             floatVector3)
-                                                    {
-                                                        ShouldAppend(
-                                                            $"FVector({floatVector3.X}, {floatVector3.Y}, {floatVector3.Z})");
-                                                    }
-                                                    else if (structTag.StructType is TIntVector2<float>
-                                                             floatVector2)
-                                                    {
-                                                        ShouldAppend(
-                                                            $"FVector2D({floatVector2.X}, {floatVector2.Y})");
-                                                    }
-                                                    else if (structTag.StructType is FVector2D vector2d)
-                                                    {
-                                                        ShouldAppend($"FVector2D({vector2d.X}, {vector2d.Y})");
-                                                    }
-                                                    else if (structTag.StructType is FRotator rotator)
-                                                    {
-                                                        ShouldAppend(
-                                                            $"FRotator({rotator.Pitch}, {rotator.Yaw}, {rotator.Roll})");
-                                                    }
-                                                    else if (structTag.StructType is FStructFallback fallback)
-                                                    {
-                                                        string formattedTags;
-                                                        if (fallback.Properties.Count > 0)
-                                                        {
-                                                            formattedTags = "[\n" + string.Join(",\n",
-                                                                fallback.Properties.Select(tag =>
-                                                                {
-                                                                    string tagDataFormatted;
-                                                                    if (tag.Tag is TextProperty text)
-                                                                    {
-                                                                        tagDataFormatted = $"\"{text.Value.Text}\"";
-                                                                    }
-                                                                    else if (tag.Tag is NameProperty name)
-                                                                    {
-                                                                        tagDataFormatted = $"\"{name.Value.Text}\"";
-                                                                    }
-                                                                    else if (tag.Tag is ObjectProperty
-                                                                     objectproperty)
-                                                                    {
-                                                                        tagDataFormatted =
-                                                                            $"\"{objectproperty.Value}\"";
-                                                                    }
-                                                                    else if (tag.Tag.GenericValue is FScriptStruct innerStruct && innerStruct.StructType is FStructFallback nestedFallback)
-                                                                    {
-                                                                        if (nestedFallback.Properties.Count > 0)
-                                                                        {
-                                                                            tagDataFormatted = "{ " + string.Join(", ",
-                                                                                nestedFallback.Properties.Select(nested =>
-                                                                                {
-                                                                                    string nestedVal;
-                                                                                    if (nested.Tag is TextProperty textProp)
-                                                                                        nestedVal = $"\"{textProp.Value.Text}\"";
-                                                                                    else if (nested.Tag is NameProperty nameProp)
-                                                                                        nestedVal = $"\"{nameProp.Value.Text}\"";
-                                                                                    else
-                                                                                        nestedVal = $"\"{nested.Tag.GenericValue}\"";
-
-                                                                                    return $"\"{nested.Name}\": {nestedVal}";
-                                                                                })) + " }";
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            tagDataFormatted = "{}";
-                                                                        }
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        tagDataFormatted = tag.Tag.GenericValue != null ? tag.Tag.GenericValue.ToString() : "{}";
-                                                                    }
-                                                                    ;
-
-                                                                    return $"\t\t{{ \"{tag.Name}\": {tagDataFormatted} }}";
-                                                                })) + "\n\t]";
-                                                        }
-                                                        else
-                                                        {
-                                                            formattedTags = "[]";
-                                                        }
-
-                                                        ShouldAppend(formattedTags);
-                                                    }
-                                                    else if (structTag.StructType is FGameplayTagContainer
-                                                             gameplayTag)
-                                                    {
-                                                        var tags = gameplayTag.GameplayTags.ToList();
-                                                        if (tags.Count > 1)
-                                                        {
-                                                            var formattedTags = "[\n" + string.Join(",\n",
-                                                                    tags.Select(tag =>
-                                                                        $"\t\t\"{tag.TagName}\"")) +
-                                                                "\n\t]";
-                                                            ShouldAppend(formattedTags);
-                                                        }
-                                                        else if (tags.Any())
-                                                        {
-                                                            ShouldAppend($"\"{tags.First().TagName}\"");
-                                                        }
-                                                        else
-                                                        {
-                                                            ShouldAppend("[]");
-                                                        }
-                                                    }
-                                                    else if (structTag.StructType is FLinearColor color)
-                                                    {
-                                                        ShouldAppend(
-                                                            $"FLinearColor({color.R}, {color.G}, {color.B}, {color.A})");
-                                                    }
-                                                    else
-                                                    {
-                                                        ShouldAppend($"\"{result}\"");
-                                                    }
-                                                }
-                                                else if (key.Tag.GetType().Name == "ObjectProperty" ||
-                                                         key.Tag.GetType().Name == "TextProperty" ||
-                                                         key.PropertyType == "StrProperty" ||
-                                                         key.PropertyType == "NameProperty" ||
-                                                         key.PropertyType == "ClassProperty")
-                                                {
-                                                    ShouldAppend($"\"{result}\"");
-                                                }
-                                                else if (key.Tag.GenericValue is UScriptSet set)
-                                                {
-                                                    var formattedSet = "[\n" + string.Join(",\n",
-                                                                           set.Properties.Select(p =>
-                                                                               $"\t\"{p.GenericValue}\"")) +
-                                                                       "\n\t]";
-                                                    ShouldAppend(formattedSet);
-                                                }
-                                                else if (key.Tag.GenericValue is UScriptMap map)
-                                                {
-                                                    var formattedMap = "[\n" + string.Join(",\n",
-                                                                           map.Properties.Select(kvp =>
-                                                                               $"\t{{\n\t\t\"{kvp.Key}\": \"{kvp.Value}\"\n\t}}")) +
-                                                                       "\n\t]";
-                                                    ShouldAppend(formattedMap);
-                                                }
-                                                else if (key.Tag.GenericValue is UScriptArray array)
-                                                {
-                                                    var formattedArray = "[\n" + string.Join(",\n",
-                                                        array.Properties.Select(p =>
-                                                        {
-                                                            if (p.GenericValue is FScriptStruct vectorInArray &&
-                                                                vectorInArray.StructType is FVector vector)
-                                                            {
-                                                                return
-                                                                    $"FVector({vector.X}, {vector.Y}, {vector.Z})";
-                                                            }
-
-                                                            if (p.GenericValue is FScriptStruct
-                                                                    vector2dInArray &&
-                                                                vector2dInArray
-                                                                    .StructType is FVector2D vector2d)
-                                                            {
-                                                                return $"FVector2D({vector2d.X}, {vector2d.Y})";
-                                                            }
-
-                                                            if (p.GenericValue is FScriptStruct structInArray &&
-                                                                structInArray.StructType is FRotator rotator)
-                                                            {
-                                                                return
-                                                                    $"FRotator({rotator.Pitch}, {rotator.Yaw}, {rotator.Roll})";
-                                                            }
-                                                            else if
-                                                                (p.GenericValue is FScriptStruct
-                                                                     fallbacksInArray &&
-                                                                 fallbacksInArray.StructType is FStructFallback
-                                                                     fallback)
-                                                            {
-                                                                string formattedTags;
-                                                                if (fallback.Properties.Count > 0)
-                                                                {
-                                                                    formattedTags = "\t[\n" + string.Join(",\n",
-                                                                        fallback.Properties.Select(tag =>
-                                                                        {
-                                                                            string tagDataFormatted;
-                                                                            if (tag.Tag is TextProperty text)
-                                                                            {
-                                                                                tagDataFormatted =
-                                                                                    $"\"{text.Value.Text}\"";
-                                                                            }
-                                                                            else if (tag.Tag is NameProperty
-                                                                             name)
-                                                                            {
-                                                                                tagDataFormatted =
-                                                                                    $"\"{name.Value.Text}\"";
-                                                                            }
-                                                                            else if (tag.Tag is ObjectProperty
-                                                                             objectproperty)
-                                                                            {
-                                                                                tagDataFormatted =
-                                                                                    $"\"{objectproperty.Value}\"";
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                tagDataFormatted =
-                                                                                    $"\"{tag.Tag.GenericValue}\"";
-                                                                            }
-
-                                                                            return
-                                                                                $"\t\t\"{tag.Name}\": {tagDataFormatted}";
-                                                                        })) + "\n\t]";
-                                                                }
-                                                                else
-                                                                {
-                                                                    formattedTags = "{}";
-                                                                }
-
-                                                                return formattedTags;
-                                                            }
-                                                            else if
-                                                                (p.GenericValue is FScriptStruct
-                                                                     gameplayTagsInArray &&
-                                                                 gameplayTagsInArray.StructType is
-                                                                     FGameplayTagContainer gameplayTag)
-                                                            {
-                                                                var tags = gameplayTag.GameplayTags.ToList();
-                                                                if (tags.Count > 1)
-                                                                {
-                                                                    var formattedTags =
-                                                                        "[\n" + string.Join(",\n",
-                                                                            tags.Select(tag =>
-                                                                                $"\t\t\"{tag.TagName}\"")) +
-                                                                        "\n\t]";
-                                                                    return formattedTags;
-                                                                }
-                                                                else
-                                                                {
-                                                                    return $"\"{tags.First().TagName}\"";
-                                                                }
-                                                            }
-
-                                                            return $"\t\t\"{p.GenericValue}\"";
-                                                        })) + "\n\t]";
-                                                    ShouldAppend(formattedArray);
-                                                }
-                                                else if (key.Tag.GenericValue is FMulticastScriptDelegate multicast)
-                                                {
-                                                    var list = multicast.InvocationList;
-                                                    ShouldAppend(list.Length == 0 ? "[]" : $"[{string.Join(", ", list.Select(x => $"\"{x.FunctionName}\""))}]");
-                                                }
-
-                                                else if (key.Tag.GenericValue is bool boolResult)
-                                                {
-                                                    ShouldAppend(boolResult.ToString().ToLower());
-                                                }
-                                                else
-                                                {
-                                                    ShouldAppend(result);
-                                                }
-                                            }
-                                        }
-                                        else
-                                        {
-                                            //outputBuilder.Append($"\nType: {export.Value.Name}");
-                                        }
-                                }
-                            }
-
-                            var childProperties = blueprintGeneratedClass?.ChildProperties ??
-                                                  verseClass?.ChildProperties;
-                            if (childProperties != null)
-                            {
-                                foreach (FProperty property in childProperties)
-                                {
-                                    if (!stringsarray.Contains(property.Name.PlainText))
-                                        outputBuilder.AppendLine(
-                                        $"\t{KismetExtensions.GetPrefix(property.GetType().Name)}{KismetExtensions.GetPropertyType(property)}{(property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) || KismetExtensions.GetPropertyProperty(property) ? "*" : string.Empty)} {property.Name.PlainText.Replace(" ", "")} = {property.Name.PlainText.Replace(" ", "")}placenolder;");
-                                }
-                            }
-                            var funcMapOrder =
-                            blueprintGeneratedClass?.FuncMap?.Keys.Select(fname => fname.ToString())
-                            .ToList() ?? verseClass?.FuncMap.Keys.Select(fname => fname.ToString())
-                            .ToList();
-                            var functions = pkg.ExportsLazy
-                            .Where(e => e.Value is UFunction)
-                            .Select(e => (UFunction) e.Value)
-                                .OrderBy(f =>
-                                {
-                                    if (funcMapOrder != null)
-                                    {
-                                        var functionName = f.Name.ToString();
-                                        int indexx = funcMapOrder.IndexOf(functionName);
-                                        return indexx >= 0 ? indexx : int.MaxValue;
-                                    }
-
-                                    return int.MaxValue;
-                                })
-                                .ThenBy(f => f.Name.ToString())
-                                .ToList();
-
-                            var jumpCodeOffsetsMap = new Dictionary<string, List<int>>();
-
-                            foreach (var function in functions.AsEnumerable().Reverse())
-                            {
-                                if (function?.ScriptBytecode == null)
-                                    continue;
-
-                                foreach (var property in function.ScriptBytecode)
-                                {
-                                    string? label = null;
-                                    int? offset = null;
-
-                                    switch (property.Token)
-                                    {
-                                        case EExprToken.EX_JumpIfNot:
-                                            label = ((EX_JumpIfNot) property).ObjectPath?.ToString()?.Split('.').Last().Split('[')[0];
-                                            offset = (int) ((EX_JumpIfNot) property).CodeOffset;
-                                            break;
-
-                                        case EExprToken.EX_Jump:
-                                            label = ((EX_Jump) property).ObjectPath?.ToString()?.Split('.').Last().Split('[')[0];
-                                            offset = (int) ((EX_Jump) property).CodeOffset;
-                                            break;
-
-                                        case EExprToken.EX_LocalFinalFunction:
-                                            {
-                                                EX_FinalFunction op = (EX_FinalFunction) property;
-                                                label = op.StackNode?.Name?.ToString()?.Split('.').Last().Split('[')[0];
-
-                                                if (op.Parameters.Length == 1 && op.Parameters[0] is EX_IntConst intConst)
-                                                    offset = intConst.Value;
-                                                break;
-                                            }
-                                    }
-
-                                    if (!string.IsNullOrEmpty(label) && offset.HasValue)
-                                    {
-                                        if (!jumpCodeOffsetsMap.TryGetValue(label, out var list))
-                                            jumpCodeOffsetsMap[label] = list = new List<int>();
-
-                                        list.Add(offset.Value);
-                                    }
-                                }
-                            }
-
-
-
-                            foreach (var function in functions)
-                            {
-                                string argsList = "";
-                                string returnFunc = "void";
-                                if (function?.ChildProperties != null)
-                                {
-                                    foreach (FProperty property in function.ChildProperties)
-                                    {
-                                        if (property.Name.PlainText == "ReturnValue")
-                                        {
-                                            returnFunc =
-                                            $"{(property.PropertyFlags.HasFlag(EPropertyFlags.ConstParm) ? "const " : string.Empty)}{KismetExtensions.GetPrefix(property.GetType().Name)}{KismetExtensions.GetPropertyType(property)}{(property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || KismetExtensions.GetPrefix(property.GetType().Name) == "U" ? "*" : string.Empty)}";
-                                        }
-                                        else if (!(property.Name.ToString().EndsWith("_ReturnValue") ||
-                                        property.Name.ToString().StartsWith("CallFunc_") ||
-                                        property.Name.ToString().StartsWith("K2Node_") ||
-                                        property.Name.ToString()
-                                        .StartsWith("Temp_")) || // removes useless args
-                                                 property.PropertyFlags.HasFlag(EPropertyFlags.Edit))
-                                        {
-                                            argsList +=
-                                            $"{(property.PropertyFlags.HasFlag(EPropertyFlags.ConstParm) ? "const " : string.Empty)}{KismetExtensions.GetPrefix(property.GetType().Name)}{KismetExtensions.GetPropertyType(property)}{(property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || KismetExtensions.GetPrefix(property.GetType().Name) == "U" ? "*" : string.Empty)}{(property.PropertyFlags.HasFlag(EPropertyFlags.OutParm) ? "&" : string.Empty)} {Regex.Replace(property.Name.ToString(), @"^__verse_0x[0-9A-Fa-f]+_", "")}, ";
-                                        }
-                                    }
-                                }
-                                argsList = argsList.TrimEnd(',', ' ');
-
-                                outputBuilder.AppendLine($"\n\t{returnFunc} {function.Name.Replace(" ", "")}({argsList})\n\t{{");
-                                if (function?.ScriptBytecode != null)
-                                {
-                                    var jumpCodeOffsets = jumpCodeOffsetsMap.TryGetValue(function.Name, out var list) ? list : new List<int>();
-                                    foreach (KismetExpression property in function.ScriptBytecode)
-                                    {
-                                        KismetExtensions.ProcessExpression(property.Token, property, outputBuilder, jumpCodeOffsets);
-                                    }
-                                }
-                                else
-                                {
-                                    outputBuilder.Append(
-                                        "\n\t // This function does not have Bytecode \n\n");
-                                    outputBuilder.Append("\t}\n");
-                                }
-                            }
-
-                            outputBuilder.Append("\n\n}");
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                        break;
+                        outputBuilder.Replace(placeholder, value);
                     }
+                    else
+                    {
+                        outputBuilder.AppendLine($"\t{KismetExtensions.GetPropertyType(propertyValue)} {propertyName.Replace(" ", "")} = {value};");
+                    }
+                }
+
+                string GetLineOfText(object value)
+                {
+                    string? text = null;
+                    switch (value)
+                    {
+                        case FScriptStruct structTag:
+                            switch (structTag.StructType)
+                            {
+                                case FVector vector:
+                                    text = $"FVector({vector.X}, {vector.Y}, {vector.Z})";
+                                    break;
+                                case FGuid guid:
+                                    text = $"FGuid({guid.A}, {guid.B}, {guid.C}, {guid.D})";
+                                    break;
+                                case TIntVector3<int> vector3:
+                                    text = $"FVector({vector3.X}, {vector3.Y}, {vector3.Z})";
+                                    break;
+                                case TIntVector3<float> floatVector3:
+                                    text = $"FVector({floatVector3.X}, {floatVector3.Y}, {floatVector3.Z})";
+                                    break;
+                                case TIntVector2<float> floatVector2:
+                                    text = $"FVector2D({floatVector2.X}, {floatVector2.Y})";
+                                    break;
+                                case FVector2D vector2d:
+                                    text = $"FVector2D({vector2d.X}, {vector2d.Y})";
+                                    break;
+                                case FRotator rotator:
+                                    text = $"FRotator({rotator.Pitch}, {rotator.Yaw}, {rotator.Roll})";
+                                    break;
+                                case FLinearColor linearColor:
+                                    text = $"FLinearColor({linearColor.R}, {linearColor.G}, {linearColor.B}, {linearColor.A})";
+                                    break;
+                                case FGameplayTagContainer gTag:
+                                    text = gTag.GameplayTags.Length switch
+                                    {
+                                        > 1 => "[\n" + string.Join(",\n", gTag.GameplayTags.Select(tag => $"\t\t\"{tag.TagName}\"")) + "\n\t]",
+                                        > 0 => $"\"{gTag.GameplayTags[0].TagName}\"",
+                                        _ => "[]"
+                                    };
+                                    break;
+                                case FStructFallback fallback:
+                                    if (fallback.Properties.Count > 0)
+                                    {
+                                        text = "[\n" + string.Join(",\n", fallback.Properties.Select(p => $"\t\"{GetLineOfText(p)}\"")) + "\n\t]";
+                                    }
+                                    else
+                                    {
+                                        text = "[]";
+                                    }
+                                    break;
+                            }
+                            break;
+                        case UScriptSet:
+                        case UScriptMap:
+                        case UScriptArray:
+                            IEnumerable<string> inner = value switch
+                            {
+                                UScriptSet set => set.Properties.Select(p => $"\t\"{p.GenericValue}\""),
+                                UScriptMap map => map.Properties.Select(kvp => $"\t{{\n\t\t\"{kvp.Key}\": \"{kvp.Value}\"\n\t}}"),
+                                UScriptArray array => array.Properties.Select(p => $"\t\"{GetLineOfText(p)}\""),
+                                _ => throw new ArgumentOutOfRangeException(nameof(value), value, null)
+                            };
+
+                            text = "[\n" + string.Join(",\n", inner) + "\n\t]";
+                            break;
+                        case FMulticastScriptDelegate multicast:
+                            text = multicast.InvocationList.Length == 0 ? "[]" : $"[{string.Join(", ", multicast.InvocationList.Select(x => $"\"{x.FunctionName}\""))}]";
+                            break;
+                        case bool:
+                            text = value.ToString()?.ToLowerInvariant();
+                            break;
+                    }
+
+                    return text ?? value.ToString();
+                }
+
+                ShouldAppend(GetLineOfText(propertyValue));
+            }
+
+            {
+                var childProperties = blueprint?.ChildProperties;
+                if (childProperties != null)
+                {
+                    foreach (FProperty property in childProperties)
+                    {
+                        if (!strings.Contains(property.Name.PlainText))
+                            outputBuilder.AppendLine(
+                            $"\t{KismetExtensions.GetPrefix(property.GetType().Name)}{KismetExtensions.GetPropertyType(property)}{(property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) || KismetExtensions.GetPropertyProperty(property) ? "*" : string.Empty)} {property.Name.PlainText.Replace(" ", "")} = {property.Name.PlainText.Replace(" ", "")}placeholder;");
+                    }
+                }
+
+                var funcMapOrder = blueprint?.FuncMap?.Keys.Select(fname => fname.ToString()).ToList();
+                var functions = pkg.ExportsLazy
+                .Where(e => e.Value is UFunction)
+                .Select(e => (UFunction) e.Value)
+                    .OrderBy(f =>
+                    {
+                        if (funcMapOrder != null)
+                        {
+                            var functionName = f.Name.ToString();
+                            int indexx = funcMapOrder.IndexOf(functionName);
+                            return indexx >= 0 ? indexx : int.MaxValue;
+                        }
+
+                        return int.MaxValue;
+                    })
+                    .ThenBy(f => f.Name.ToString())
+                    .ToList();
+
+                var jumpCodeOffsetsMap = new Dictionary<string, List<int>>();
+
+                foreach (var function in functions.AsEnumerable().Reverse())
+                {
+                    if (function?.ScriptBytecode == null)
+                        continue;
+
+                    foreach (var property in function.ScriptBytecode)
+                    {
+                        string? label = null;
+                        int? offset = null;
+
+                        switch (property.Token)
+                        {
+                            case EExprToken.EX_JumpIfNot:
+                                label = ((EX_JumpIfNot) property).ObjectPath?.ToString()?.Split('.').Last().Split('[')[0];
+                                offset = (int) ((EX_JumpIfNot) property).CodeOffset;
+                                break;
+
+                            case EExprToken.EX_Jump:
+                                label = ((EX_Jump) property).ObjectPath?.ToString()?.Split('.').Last().Split('[')[0];
+                                offset = (int) ((EX_Jump) property).CodeOffset;
+                                break;
+
+                            case EExprToken.EX_LocalFinalFunction:
+                                {
+                                    EX_FinalFunction op = (EX_FinalFunction) property;
+                                    label = op.StackNode?.Name?.ToString()?.Split('.').Last().Split('[')[0];
+
+                                    if (op.Parameters.Length == 1 && op.Parameters[0] is EX_IntConst intConst)
+                                        offset = intConst.Value;
+                                    break;
+                                }
+                        }
+
+                        if (!string.IsNullOrEmpty(label) && offset.HasValue)
+                        {
+                            if (!jumpCodeOffsetsMap.TryGetValue(label, out var list))
+                                jumpCodeOffsetsMap[label] = list = new List<int>();
+
+                            list.Add(offset.Value);
+                        }
+                    }
+                }
+
+
+
+                foreach (var function in functions)
+                {
+                    string argsList = "";
+                    string returnFunc = "void";
+                    if (function?.ChildProperties != null)
+                    {
+                        foreach (FProperty property in function.ChildProperties)
+                        {
+                            if (property.Name.PlainText == "ReturnValue")
+                            {
+                                returnFunc =
+                                $"{(property.PropertyFlags.HasFlag(EPropertyFlags.ConstParm) ? "const " : string.Empty)}{KismetExtensions.GetPrefix(property.GetType().Name)}{KismetExtensions.GetPropertyType(property)}{(property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || KismetExtensions.GetPrefix(property.GetType().Name) == "U" ? "*" : string.Empty)}";
+                            }
+                            else if (!(property.Name.ToString().EndsWith("_ReturnValue") ||
+                            property.Name.ToString().StartsWith("CallFunc_") ||
+                            property.Name.ToString().StartsWith("K2Node_") ||
+                            property.Name.ToString()
+                            .StartsWith("Temp_")) || // removes useless args
+                                     property.PropertyFlags.HasFlag(EPropertyFlags.Edit))
+                            {
+                                argsList +=
+                                $"{(property.PropertyFlags.HasFlag(EPropertyFlags.ConstParm) ? "const " : string.Empty)}{KismetExtensions.GetPrefix(property.GetType().Name)}{KismetExtensions.GetPropertyType(property)}{(property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || KismetExtensions.GetPrefix(property.GetType().Name) == "U" ? "*" : string.Empty)}{(property.PropertyFlags.HasFlag(EPropertyFlags.OutParm) ? "&" : string.Empty)} {Regex.Replace(property.Name.ToString(), @"^__verse_0x[0-9A-Fa-f]+_", "")}, ";
+                            }
+                        }
+                    }
+                    argsList = argsList.TrimEnd(',', ' ');
+
+                    outputBuilder.AppendLine($"\n\t{returnFunc} {function.Name.Replace(" ", "")}({argsList})\n\t{{");
+                    if (function?.ScriptBytecode != null)
+                    {
+                        var jumpCodeOffsets = jumpCodeOffsetsMap.TryGetValue(function.Name, out var list) ? list : new List<int>();
+                        foreach (KismetExpression property in function.ScriptBytecode)
+                        {
+                            KismetExtensions.ProcessExpression(property.Token, property, outputBuilder, jumpCodeOffsets);
+                        }
+                    }
+                    else
+                    {
+                        outputBuilder.Append("\n\t // This function does not have Bytecode \n\n");
+                        outputBuilder.Append("\t}\n");
+                    }
+                }
+
+                outputBuilder.Append("\n\n}");
             }
         }
-        string pattern = $@"\w+placenolder";
-        string updatedOutput = Regex.Replace(outputBuilder.ToString(), pattern, "nullptr");
 
-        TabControl.SelectedTab.SetDocumentText(updatedOutput, false, false);
+        var cpp = Regex.Replace(outputBuilder.ToString(), @"\w+placeholder", "nullptr");
+        TabControl.SelectedTab.SetDocumentText(cpp, false, false);
     }
+
     private void SaveAndPlaySound(string fullPath, string ext, byte[] data)
     {
         if (fullPath.StartsWith("/")) fullPath = fullPath[1..];

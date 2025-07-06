@@ -229,7 +229,7 @@
                     <CheckBox Grid.Row="17" Grid.Column="2" Content="{Binding IsChecked, RelativeSource={RelativeSource Self}, Converter={x:Static converters:BoolToToggleConverter.Instance}}"
                               IsChecked="{Binding ReadShaderMaps, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" Margin="0 5 0 10"/>
 
-                    <TextBlock Grid.Row="18" Grid.Column="0" Text="Show Blueprint Decompile" VerticalAlignment="Center" Margin="0 5 0 5" ToolTip="Shows Decompiled Blueprints in a cpp format" />
+                    <TextBlock Grid.Row="18" Grid.Column="0" Text="Show Blueprint Decompile" VerticalAlignment="Center" Margin="0 0 0 5" ToolTip="Shows Decompiled Blueprints in a cpp format" />
                     <CheckBox Grid.Row="18" Grid.Column="2" Content="{Binding IsChecked, RelativeSource={RelativeSource Self}, Converter={x:Static converters:BoolToToggleConverter.Instance}}"
                               IsChecked="{Binding ShowDecompileOption, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" Margin="0 5 0 10"/>
                 </Grid>
