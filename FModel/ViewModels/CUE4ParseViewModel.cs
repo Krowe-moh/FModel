@@ -588,6 +588,7 @@ public class CUE4ParseViewModel : ViewModel
                 break;
             }
             case "upluginmanifest":
+            case "projectstore":
             case "uproject":
             case "manifest":
             case "uplugin":
