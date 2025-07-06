@@ -17,7 +17,7 @@ namespace FModel.Extensions;
 
 public static class KismetExtensions
 {
-    public static string GetPrefix(string type, string extra = "")
+    public static string GetPrefix(string type, string extra = "") // todo: implement better handling
     {
         return type switch
         {
@@ -79,14 +79,18 @@ public static class KismetExtensions
     }
     public static string GetPropertyType(FProperty? property)
     {
-        if (property is null)
-            return "None";
+        if (property is null) return "None";
+
+        bool isPointer(FProperty p) =>
+            p.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) ||
+            property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) ||
+            p.PropertyFlags.HasFlag(EPropertyFlags.ContainsInstancedReference);
 
         return property switch
         {
-            FSetProperty set => $"TSet<{GetPrefix(set.ElementProp.GetType().Name)}{GetPropertyType(set.ElementProp)}{(set.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) || set.PropertyFlags.HasFlag(EPropertyFlags.ContainsInstancedReference) ? "*" : string.Empty)}>",
-            FMapProperty map => $"TMap<{GetPrefix(map.ValueProp.GetType().Name)}{GetPropertyType(map.KeyProp)}, {GetPrefix(map.ValueProp.GetType().Name)}{GetPropertyType(map.ValueProp)}{(map.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) || map.PropertyFlags.HasFlag(EPropertyFlags.ContainsInstancedReference) ? "*" : string.Empty)}>",
-            FArrayProperty array => $"TArray<{GetPrefix(array.Inner.GetType().Name)}{GetPropertyType(array.Inner)}{(array.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) || array.PropertyFlags.HasFlag(EPropertyFlags.ContainsInstancedReference) || GetPropertyProperty(array.Inner.GetType().Name) ? "*" : string.Empty)}>",
+            FSetProperty s => $"TSet<{GetPrefix(s.ElementProp.GetType().Name)}{GetPropertyType(s.ElementProp)}{(isPointer(s) ? "*" : "")}>",
+            FMapProperty m => $"TMap<{GetPrefix(m.KeyProp.GetType().Name)}{GetPropertyType(m.KeyProp)}, {GetPrefix(m.ValueProp.GetType().Name)}{GetPropertyType(m.ValueProp)}{(isPointer(m) ? "*" : "")}>",
+            FArrayProperty a => $"TArray<{GetPrefix(a.Inner.GetType().Name)}{GetPropertyType(a.Inner)}{(isPointer(a) || GetPropertyProperty(a.Inner.GetType().Name) ? "*" : "")}>",
             _ => GetPropertyType((object)property)
         };
     }
@@ -224,14 +228,7 @@ public static class KismetExtensions
                     var destination = ProcessTextProperty(op.DestinationProperty, false);
                     var variable = ProcessTextProperty(opp.Variable, false);
 
-                    if (!isParameter)
-                    {
-                        outputBuilder.Append($"\t\t{(destination.Contains("K2Node_") ? $"UberGraphFrame->{destination}" : destination)} = {variable};\n\n"); // hardcoded but works
-                    }
-                    else
-                    {
-                        outputBuilder.Append($"\t\t{(destination.Contains("K2Node_") ? $"UberGraphFrame->{destination}" : destination)} = {variable}");
-                    }
+                    outputBuilder.Append($"\t\t{(destination.Contains("K2Node_") ? "UberGraphFrame->" + destination : destination)} = {variable}{(!isParameter ? ";\n\n" : "")}"); // Hardcoded but works
                     break;
                 }
             case EExprToken.EX_LocalFinalFunction:
@@ -366,7 +363,7 @@ public static class KismetExtensions
                 }
             case EExprToken.EX_Cast:
                 {
-                    EX_Cast op = (EX_Cast) expression;// support CST_ObjectToInterface when I have an example of how it works
+                    EX_Cast op = (EX_Cast) expression; // support CST_ObjectToInterface when I have an example of how it works
 
                     if (op.ConversionType is ECastToken.CST_ObjectToBool or ECastToken.CST_InterfaceToBool)
                     {
@@ -474,7 +471,7 @@ public static class KismetExtensions
                     {
                         var element = op.Elements[i];
                         outputBuilder.Append(' ');
-                        ProcessExpression(element.Token, element, outputBuilder, jumpCodeOffsets);// sometimes the start of an array is a byte not a variable
+                        ProcessExpression(element.Token, element, outputBuilder, jumpCodeOffsets); // sometimes the start of an array is a byte not a variable
 
                         if (i < op.Elements.Length - 1)
                         {
@@ -499,7 +496,7 @@ public static class KismetExtensions
                     {
                         var element = op.Elements[i];
                         outputBuilder.Append(' ');
-                        ProcessExpression(element.Token, element, outputBuilder, jumpCodeOffsets, true);// sometimes the start of an array is a byte not a variable
+                        ProcessExpression(element.Token, element, outputBuilder, jumpCodeOffsets, true); // sometimes the start of an array is a byte not a variable
 
                         if (i < op.Elements.Length - 1)
                         {
@@ -624,7 +621,7 @@ public static class KismetExtensions
             case EExprToken.EX_ObjectConst:
                 {
                     EX_ObjectConst op = (EX_ObjectConst) expression;
-                    outputBuilder.Append(!isParameter ? "\t\tFindObject<" : outputBuilder.ToString().EndsWith('\n') ? "\t\tFindObject<" : "FindObject<"); // please don't complain, i know this is bad but i MUST do it.
+                    outputBuilder.Append(!isParameter ? "\t\tFindObject<" : outputBuilder.ToString().EndsWith('\n') ? "\t\tFindObject<" : "FindObject<"); // please don't complain, I know this is bad but I MUST do it.
                     string classString = op.Value.ResolvedObject?.Class?.ToString().Replace("'", "");
 
                     if (classString?.Contains('.') == true)
@@ -638,8 +635,8 @@ public static class KismetExtensions
                     }
                     outputBuilder.Append(">(\"");
                     var resolvedObject = op?.Value?.ResolvedObject;
-                    var outerString = resolvedObject?.Outer?.ToString()?.Replace("'", "") ?? "UNKNOWN";
-                    var outerClassString = resolvedObject?.Class?.ToString()?.Replace("'", "") ?? "UNKNOWN";
+                    var outerString = resolvedObject?.Outer?.ToString()?.Replace("'", "") ?? "outerUnknown";
+                    var outerClassString = resolvedObject?.Class?.ToString()?.Replace("'", "") ?? "outerClassUnknown";
                     var name = op?.Value?.Name ?? string.Empty;
 
                     outputBuilder.Append(outerString.Replace(outerClassString, "") + "." + name);
@@ -866,7 +863,7 @@ public static class KismetExtensions
                     }
                     else
                     {
-                        outputBuilder.Append(op.Value);
+                        outputBuilder.Append(op.Value); // impossible to reach?
                     }
                 }
                 break;
@@ -1024,6 +1021,7 @@ public static class KismetExtensions
                 // some here are "useful" and unsupported
                 break;
             /*
+             Todo: check what uses these, fortnite has none instances
             EExprToken.EX_Assert
             EExprToken.EX_Skip
             EExprToken.EX_InstrumentationEvent

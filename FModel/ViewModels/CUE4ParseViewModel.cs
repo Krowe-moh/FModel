@@ -976,7 +976,7 @@ public class CUE4ParseViewModel : ViewModel
                 continue;
 
             var dummy = ((AbstractUePackage) pkg).ConstructObject(pointer.Class?.Object?.Value as UStruct, pkg);
-            if (dummy is not UBlueprintGeneratedClass || pointer.Object.Value is not UBlueprintGeneratedClass blueprint)
+            if (dummy is not UClass || pointer.Object.Value is not UClass blueprint)
                 continue;
 
             var typePrefix = KismetExtensions.GetPrefix(blueprint.GetType().Name);
@@ -991,7 +991,7 @@ public class CUE4ParseViewModel : ViewModel
                 var propertyName = property.Name.ToString();
                 var propertyValue = property.Tag?.GenericValue;
                 strings.Add(propertyName);
-                string placeholder = $"{propertyName}placeholder";
+                string placeholder = $"{propertyName}fmodelholder"; // spelling mistake is intended
 
                 void ShouldAppend(string value)
                 {
@@ -1092,19 +1092,19 @@ public class CUE4ParseViewModel : ViewModel
                 var type = KismetExtensions.GetPropertyType(property);
                 var prefix = KismetExtensions.GetPrefix(property.GetType().Name);
 
-                string whatever;
+                string pointerIdentifier;
                 if (property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) ||
                     property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) ||
                     KismetExtensions.GetPropertyProperty(property))
                 {
-                    whatever = "*";
+                    pointerIdentifier = "*";
                 }
                 else
                 {
-                    whatever = string.Empty;
+                    pointerIdentifier = string.Empty;
                 }
 
-                outputBuilder.AppendLine($"\t{prefix}{type}{whatever} {propertyName} = {propertyName}placeholder;");
+                outputBuilder.AppendLine($"\t{prefix}{type}{pointerIdentifier} {propertyName} = {propertyName}fmodelholder;");
             }
 
             {
@@ -1117,8 +1117,8 @@ public class CUE4ParseViewModel : ViewModel
                         if (funcMapOrder != null)
                         {
                             var functionName = f.Name.ToString();
-                            int indexx = funcMapOrder.IndexOf(functionName);
-                            return indexx >= 0 ? indexx : int.MaxValue;
+                            int index = funcMapOrder.IndexOf(functionName);
+                            return index >= 0 ? index : int.MaxValue;
                         }
 
                         return int.MaxValue;
@@ -1171,8 +1171,6 @@ public class CUE4ParseViewModel : ViewModel
                     }
                 }
 
-
-
                 foreach (var function in functions)
                 {
                     string argsList = "";
@@ -1181,21 +1179,28 @@ public class CUE4ParseViewModel : ViewModel
                     {
                         foreach (FProperty property in function.ChildProperties)
                         {
-                            if (property.Name.PlainText == "ReturnValue")
+                            var name = property.Name.ToString();
+                            var plainName = property.Name.PlainText;
+                            var prefix = KismetExtensions.GetPrefix(property.GetType().Name);
+                            var type = KismetExtensions.GetPropertyType(property);
+                            var isConst = property.PropertyFlags.HasFlag(EPropertyFlags.ConstParm);
+                            var isOut = property.PropertyFlags.HasFlag(EPropertyFlags.OutParm);
+                            var isInstanced = property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference);
+                            var isEdit = property.PropertyFlags.HasFlag(EPropertyFlags.Edit);
+
+                            if (plainName == "ReturnValue")
                             {
-                                returnFunc =
-                                $"{(property.PropertyFlags.HasFlag(EPropertyFlags.ConstParm) ? "const " : string.Empty)}{KismetExtensions.GetPrefix(property.GetType().Name)}{KismetExtensions.GetPropertyType(property)}{(property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || KismetExtensions.GetPrefix(property.GetType().Name) == "U" ? "*" : string.Empty)}";
+                                returnFunc = $"{(isConst ? "const " : "")}{prefix}{type}{(isInstanced || prefix == "U" ? "*" : "")}";
+                                continue;
                             }
-                            else if (!(property.Name.ToString().EndsWith("_ReturnValue") ||
-                            property.Name.ToString().StartsWith("CallFunc_") ||
-                            property.Name.ToString().StartsWith("K2Node_") ||
-                            property.Name.ToString()
-                            .StartsWith("Temp_")) || // removes useless args
-                                     property.PropertyFlags.HasFlag(EPropertyFlags.Edit))
-                            {
-                                argsList +=
-                                $"{(property.PropertyFlags.HasFlag(EPropertyFlags.ConstParm) ? "const " : string.Empty)}{KismetExtensions.GetPrefix(property.GetType().Name)}{KismetExtensions.GetPropertyType(property)}{(property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || KismetExtensions.GetPrefix(property.GetType().Name) == "U" ? "*" : string.Empty)}{(property.PropertyFlags.HasFlag(EPropertyFlags.OutParm) ? "&" : string.Empty)} {Regex.Replace(property.Name.ToString(), @"^__verse_0x[0-9A-Fa-f]+_", "")}, ";
-                            }
+
+                            bool uselessIgnore = name.EndsWith("_ReturnValue") || name.StartsWith("CallFunc_") || name.StartsWith("K2Node_") || name.StartsWith("Temp_"); // read variable name
+
+                            if (uselessIgnore && !isEdit)
+                                continue;
+
+                            var strippedVerseName = Regex.Replace(name, @"^__verse_0x[0-9A-Fa-f]+_", "");
+                            argsList += $"{(isConst ? "const " : "")}{prefix}{type}{(isInstanced || prefix == "U" ? "*" : "")}{(isOut ? "&" : "")} {strippedVerseName}, ";
                         }
                     }
                     argsList = argsList.TrimEnd(',', ' ');
@@ -1211,7 +1216,7 @@ public class CUE4ParseViewModel : ViewModel
                     }
                     else
                     {
-                        outputBuilder.Append("\n\t // This function does not have Bytecode \n\n");
+                        outputBuilder.Append("\n\t // No Bytecode (Make sure \"Serialize Script Bytecode\" is enabled \n\n");
                         outputBuilder.Append("\t}\n");
                     }
                 }
@@ -1220,7 +1225,7 @@ public class CUE4ParseViewModel : ViewModel
             }
         }
 
-        var cpp = Regex.Replace(outputBuilder.ToString(), @"\w+placeholder", "nullptr");
+        var cpp = Regex.Replace(outputBuilder.ToString(), @"\w+fmodelholder", "nullptr");
         TabControl.SelectedTab.SetDocumentText(cpp, false, false);
     }
 

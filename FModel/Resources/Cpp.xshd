@@ -1,240 +1,147 @@
-<SyntaxDefinition name="C++" extensions=".c;.h;.cc;.cpp;.hpp" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
-    <Color name="String" foreground="#FFCB6B" />
-    <Color name="Punctuation" foreground="#FF89DDFF" />
-    <Color name="MethodName" foreground="#FFDCDCAA" fontWeight="bold" />
+<SyntaxDefinition name="C++" extensions=".cpp;.h;.hpp;.c" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+    <Color name="Comment" foreground="#84c36b" />
+    <Color name="Keyword" foreground="#82AAFF" fontWeight="bold" />
+    <Color name="Type" foreground="#4cc9b0" />
+    <Color name="String" foreground="#ECC48D" />
+    <Color name="Preprocessor" foreground="#82AAFF" fontWeight="bold" />
+    <Color name="Number" foreground="#F78C6C" />
+    <Color name="Function" foreground="#C3E88D" />
+    <Color name="AccessModifier" foreground="#f20f5c" fontWeight="bold" />
+    <Color name="UEMacro" foreground="#82AAFF" fontWeight="bold" />
+    <Color name="LabelColor" foreground="#808080" />
+    <Color name="JumpKeywords" foreground="#dda0dd" />
     <Color name="CompoundKeywords" foreground="#FF569CD6" fontWeight="bold" />
-    <Color name="This" foreground="#FF569CD6" fontWeight="bold" />
-    <Color name="Operators" foreground="#FFB467CA" fontWeight="bold" />
-    <Color name="Namespace" foreground="#FF9CDCFE" fontWeight="bold" />
-    <Color name="Friend" foreground="#FFD16969" />
-    <Color name="Modifiers" foreground="#f20f5c" fontWeight="bold" />
-    <Color name="TypeKeywords" foreground="#FF4EC9B0" />
-    <Color name="BooleanConstants" foreground="#FF569CD6" fontWeight="bold" />
-    <Color name="Keywords" foreground="#FF569CD6" fontWeight="bold" />
-    <Color name="LoopKeywords" foreground="#FF569CD6" fontWeight="bold" />
-    <Color name="JumpKeywords" foreground="#FFF47C3C" />
-    <Color name="ExceptionHandling" foreground="#FFB467CA" fontWeight="bold" />
-    <Color name="ControlFlow" foreground="#FF569CD6" fontWeight="bold" />
-    <Color name="ClassName" foreground="#FFFFCC66" fontWeight="bold" />
-    <Color name="Type" foreground="#4ec9b0" />
-    <Color name="Function" foreground="#FF99FF99" fontWeight="bold" />
-    <Color name="Variable" foreground="#FFCC99FF" />
-    <Color name="Label" foreground="#FFAAAAAA" fontStyle="italic" />
-    <Color name="Keyword" foreground="#FFFF8888" fontWeight="bold" />
+    <Color name="Pointer" foreground="#ff8888" fontWeight="bold"/>
+    <Color name="StaticClass" foreground="#c2a8ff" />
     <Color name="Brace" foreground="#89DDFF" />
-    <Color name="Number" foreground="#FFFFAA66" />
-    <Color name="Identifier" foreground="#FF61AFEF" />
+    <Color name="This" foreground="#FF569CD6" fontWeight="bold" />
+    <Color name="BooleanConstants" foreground="#569cd6" fontWeight="bold" />
 
     <RuleSet ignoreCase="false">
-        <Keywords color="Type">
-            <Word>BlueprintGeneratedClass</Word>
-            <Word>Class</Word>
-            <Word>FSoftObjectPath</Word>
-            <Word>UScriptArray</Word>
-            <Word>NavmeshGeneratorComponent</Word>
-            <Word>EndGameComponent</Word>
-            <Word>USceneComponent</Word>
+        <Span color="String" begin="&quot;" end="&quot;" />
+        <!-- UE Macros -->
+        <Keywords color="UEMacro">
+            <Word>UCLASS</Word>
+            <Word>USTRUCT</Word>
+            <Word>UPROPERTY</Word>
+            <Word>UFUNCTION</Word>
+            <Word>GENERATED_BODY</Word>
+            <Word>GENERATED_USTRUCT_BODY</Word>
+            <Word>GENERATED_UCLASS_BODY</Word>
         </Keywords>
 
-        <Keywords color="TypeKeywords">
-            <Word>bool</Word>
-            <Word>char</Word>
-            <Word>unsigned</Word>
-            <Word>union</Word>
-            <Word>virtual</Word>
-            <Word>double</Word>
-            <Word>float</Word>
-            <Word>short</Word>
-            <Word>signed</Word>
-            <Word>void</Word>
-            <Word>class</Word>
-            <Word>enum</Word>
-            <Word>struct</Word>
-        </Keywords>
-
-        <Rule color="Type">\b(BlueprintGeneratedClass|Class|FSoftObjectPath|UScriptArray|NavmeshGeneratorComponent|EndGameComponent|USceneComponent)\b</Rule>
-
-        <Rule color="ClassName">ABP_[A-Za-z0-9_]+_C</Rule>
-
-        <Rule color="Type">\bF[A-Z][A-Za-z0-9_]*\b</Rule>
-        <Rule color="Type">\bU[A-Z][A-Za-z0-9_]*\b</Rule>
-        <Rule color="Type">\bA[A-Z][A-Za-z0-9_]*\b</Rule>
-        <Rule color="Type">\bE[A-Z][A-Za-z0-9_]*\b</Rule>
-
-        <Rule color="Label">Label_[0-9]+</Rule>
-
-        <Rule color="Variable">CallFunc_[A-Za-z0-9_]+</Rule>
-        <Rule color="Identifier">K2Node_[A-Za-z0-9_]+</Rule>
-        <Rule color="Identifier">Temp_delegate_Variable(_[0-9]+)?</Rule>
-
-        <Rule color="MethodName">ExecuteUbergraph_[A-Za-z0-9_]+</Rule>
-        <Rule color="MethodName">UserConstructionScript</Rule>
-        <Rule color="MethodName">ReceiveBeginPlay</Rule>
-        <Rule color="MethodName">OnBeginFadeOut</Rule>
-        <Rule color="MethodName">.*__UpdateFunc</Rule>
-        <Rule color="MethodName">.*__FinishedFunc</Rule>
-
-        <Rule color="Keyword">goto</Rule>
-        <Rule color="Keyword">nullptr</Rule>
-
-        <Rule color="Keyword">FindObject&lt;[A-Za-z0-9_]+&gt;</Rule>
-
-        <Rule color="String">&quot;[^&quot;]*&quot;</Rule>
-        <Rule color="Number">\b[0-9]+(\.[0-9]+)?\b</Rule>
-        <Rule color="Brace">[\[\]\{\}]</Rule>
-
-        <Rule color="Type">UKismetMathLibrary</Rule>
-        <Rule color="Type">UKismetSystemLibrary</Rule>
-
-        <Rule color="Punctuation">[?,.;()\[\]{}+\-/%*&lt;&gt;^=~!&amp;]+</Rule>
-
-        <Keywords color="CompoundKeywords">
-            <Word>__abstract</Word>
-            <Word>__box</Word>
-            <Word>__delegate</Word>
-            <Word>__gc</Word>
-            <Word>__identifier</Word>
-            <Word>__nogc</Word>
-            <Word>__pin</Word>
-            <Word>__property</Word>
-            <Word>__sealed</Word>
-            <Word>__try_cast</Word>
-            <Word>__typeof</Word>
-            <Word>__value</Word>
-            <Word>__event</Word>
-            <Word>__hook</Word>
-            <Word>__raise</Word>
-            <Word>__unhook</Word>
-            <Word>__interface</Word>
-            <Word>ref class</Word>
-            <Word>ref struct</Word>
-            <Word>value class</Word>
-            <Word>value struct</Word>
-            <Word>interface class</Word>
-            <Word>interface struct</Word>
-            <Word>enum class</Word>
-            <Word>enum struct</Word>
-            <Word>delegate</Word>
-            <Word>event</Word>
-            <Word>property</Word>
-            <Word>abstract</Word>
-            <Word>override</Word>
-            <Word>sealed</Word>
-            <Word>generic</Word>
-            <Word>where</Word>
-            <Word>finally</Word>
-            <Word>for each</Word>
-            <Word>gcnew</Word>
-            <Word>in</Word>
-            <Word>initonly</Word>
-            <Word>literal</Word>
-            <Word>nullptr</Word>
-        </Keywords>
-
-        <Keywords color="This">
-            <Word>this</Word>
-        </Keywords>
-        <Keywords color="Operators">
-            <Word>and</Word>
-            <Word>and_eq</Word>
-            <Word>bitand</Word>
-            <Word>bitor</Word>
-            <Word>new</Word>
-            <Word>not</Word>
-            <Word>not_eq</Word>
-            <Word>or</Word>
-            <Word>or_eq</Word>
-            <Word>xor</Word>
-            <Word>xor_eq</Word>
-        </Keywords>
-        <Keywords color="Namespace">
-            <Word>using</Word>
-            <Word>namespace</Word>
-        </Keywords>
-        <Keywords color="Friend">
-            <Word>friend</Word>
-        </Keywords>
-        <Keywords color="Modifiers">
-            <Word>private</Word>
-            <Word>protected</Word>
-            <Word>public</Word>
-            <Word>const</Word>
-            <Word>volatile</Word>
-            <Word>static</Word>
-        </Keywords>
-        <Keywords color="BooleanConstants">
-            <Word>true</Word>
-            <Word>false</Word>
-            <Word>NULL</Word>
-        </Keywords>
-        <Keywords color="Keywords">
-            <Word>break</Word>
-            <Word>case</Word>
-            <Word>catch</Word>
-            <Word>const_cast</Word>
-            <Word>continue</Word>
-            <Word>default</Word>
-            <Word>delete</Word>
-            <Word>dynamic_cast</Word>
-            <Word>else</Word>
-            <Word>explicit</Word>
-            <Word>export</Word>
-            <Word>extern</Word>
-            <Word>false</Word>
-            <Word>for</Word>
-            <Word>friend</Word>
-            <Word>goto</Word>
-            <Word>if</Word>
-            <Word>mutable</Word>
-            <Word>namespace</Word>
-            <Word>new</Word>
-            <Word>operator</Word>
-            <Word>private</Word>
-            <Word>protected</Word>
-            <Word>public</Word>
-            <Word>register</Word>
-            <Word>reinterpret_cast</Word>
-            <Word>return</Word>
-            <Word>sizeof</Word>
-            <Word>static_cast</Word>
-            <Word>template</Word>
-            <Word>throw</Word>
-            <Word>try</Word>
-            <Word>typedef</Word>
-            <Word>typeid</Word>
-            <Word>typename</Word>
-            <Word>using</Word>
-            <Word>virtual</Word>
-            <Word>volatile</Word>
-            <Word>while</Word>
-        </Keywords>
-        <Keywords color="LoopKeywords">
-            <Word>do</Word>
-            <Word>for</Word>
-            <Word>while</Word>
-            <Word>break</Word>
-            <Word>continue</Word>
-        </Keywords>
         <Keywords color="JumpKeywords">
             <Word>goto</Word>
             <Word>return</Word>
             <Word>throw</Word>
         </Keywords>
-        <Keywords color="ExceptionHandling">
-            <Word>try</Word>
-            <Word>catch</Word>
-            <Word>throw</Word>
-            <Word>finally</Word>
-        </Keywords>
-        <Keywords color="ControlFlow">
+
+        <!-- C++ Keywords -->
+        <Keywords color="Keyword">
+            <Word>void</Word>
+            <Word>int</Word>
+            <Word>Int8</Word>
+            <Word>Int16</Word>
+            <Word>Int32</Word>
+            <Word>Int64</Word>
+            <Word>uint</Word>
+            <Word>UInt16</Word>
+            <Word>UInt32</Word>
+            <Word>UInt64</Word>
+            <Word>float</Word>
+            <Word>double</Word>
+            <Word>bool</Word>
+            <Word>return</Word>
             <Word>if</Word>
             <Word>else</Word>
+            <Word>for</Word>
+            <Word>while</Word>
+            <Word>do</Word>
             <Word>switch</Word>
             <Word>case</Word>
-            <Word>default</Word>
             <Word>break</Word>
             <Word>continue</Word>
-            <Word>return</Word>
+            <Word>namespace</Word>
+            <Word>using</Word>
+            <Word>typedef</Word>
+            <Word>sizeof</Word>
+            <Word>new</Word>
+            <Word>delete</Word>
+            <Word>class</Word>
+            <Word>struct</Word>
+            <Word>enum</Word>
+            <Word>template</Word>
+            <Word>typename</Word>
+            <Word>const</Word>
+            <Word>static</Word>
+            <Word>mutable</Word>
+            <Word>volatile</Word>
+            <Word>override</Word>
+            <Word>virtual</Word>
+            <Word>explicit</Word>
+            <Word>friend</Word>
+            <Word>inline</Word>
+            <Word>constexpr</Word>
         </Keywords>
+
+        <Keywords color="Pointer">
+            <Word>nullptr</Word>
+        </Keywords>
+
+        <Keywords color="BooleanConstants">
+            <Word>true</Word>
+            <Word>True</Word>
+            <Word>false</Word>
+            <Word>False</Word>
+            <Word>NULL</Word>
+        </Keywords>
+
+        <Keywords color="AccessModifier">
+            <Word>public</Word>
+            <Word>protected</Word>
+            <Word>private</Word>
+        </Keywords>
+
+        <Keywords color="This">
+            <Word>this</Word>
+        </Keywords>
+
+        <!-- Reference symbols -->
+        <Rule color="Pointer">(?&lt;=[A-Za-z0-9_&gt;&amp;\]])&amp;(?=\s*[A-Za-z_&lt;])</Rule>
+
+        <Rule color="LabelColor">\bLabel_\d+:</Rule>
+
+        <!-- Numbers (hex too) -->
+        <Rule color="Number">\b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?)\b</Rule>
+
+        <Rule color="StaticClass">\bU[A-Z][A-Za-z0-9_]*\b(?=::)</Rule>
+        <Rule color="Function">[A-Za-z_][A-Za-z0-9_]*\s*(?=\()</Rule>
+
+        <Rule color="Brace">[\[\]\{\}]</Rule>
+
+        <!-- Template Functions -->
+        <Rule color="Function">\b[A-Za-z_][A-Za-z0-9_]*\b(?=&lt;)</Rule>
+
+        <!-- Types -->
+        <Rule color="Type">\b[A-Z][A-Za-z0-9_]*(?:&lt;[^&gt;]+&gt;)?[*&amp;]?(?=\s+[*&amp;]?[A-Za-z_][A-Za-z0-9_]*\s*(=|;|\)|,))</Rule>
+
+        <!-- Types inside <> -->
+        <Rule color="Type">(?&lt;=&lt;)\s*[A-Z][A-Za-z0-9_]*(?:&lt;[^&gt;]+&gt;)?[*&amp;]?\s*(?=[&gt;,])</Rule>
+
+        <!-- Match class name after the 'class' keyword -->
+        <Rule color="Type">\b(?&lt;=class\s)[A-Za-z_][A-Za-z0-9_]*</Rule>
+
+        <!-- Match name after 'public' keyword -->
+        <Rule color="Type">\b(?&lt;=public\s)[A-Za-z_][A-Za-z0-9_]*</Rule>
+
+        <!-- Types in function parameters -->
+        <Rule color="Type">\b(?:T|F|U|E)[A-Z][A-Za-z0-9_]*(?:&lt;[^&gt;]+&gt;)?[*&amp;]?(?=\s+[*&amp;]?[A-Za-z_][A-Za-z0-9_]*\s*(?:=|,|\)))</Rule>
+        <Rule color="Type">\b(?&lt;=[,(]\s*const\s)(?:T|F|U)[A-Z][A-Za-z0-9_]*[*&amp;]?(?=\s)</Rule>
+
+        <!-- First parameter type in function -->
+        <Rule color="Type">\b(?&lt;=\()\s*[TUF][A-Z][A-Za-z0-9_]*(?=\s*&lt;)</Rule>
+        <Rule color="Type">\b(?&lt;=\()\s*[TUF][A-Z][A-Za-z0-9_]*[*&amp;]?(?=\s)</Rule>
+        <Rule color="Type">\b(?&lt;=\(\s*const\s)[TUF][A-Z][A-Za-z0-9_]*[*&amp;]?(?=\s)</Rule>
+
     </RuleSet>
 </SyntaxDefinition>
