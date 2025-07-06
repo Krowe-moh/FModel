@@ -979,12 +979,8 @@ public class CUE4ParseViewModel : ViewModel
             if (dummy is not UBlueprintGeneratedClass || pointer.Object.Value is not UBlueprintGeneratedClass blueprint)
                 continue;
 
-            var type = blueprint.GetType().Name;
-            var typePrefix = KismetExtensions.GetPrefix(type);
-            var className = blueprint.Name;
-            var superClassName = blueprint?.SuperStruct?.Name ?? string.Empty;
-
-            outputBuilder.AppendLine($"class {typePrefix}{className} : public {typePrefix}{superClassName}\n{{\npublic:");
+            var typePrefix = KismetExtensions.GetPrefix(blueprint.GetType().Name);
+            outputBuilder.AppendLine($"class {typePrefix}{blueprint.Name} : public {typePrefix}{blueprint?.SuperStruct?.Name ?? string.Empty}\n{{\npublic:");
 
             if (!blueprint.ClassDefaultObject.TryLoad(out var bpObject))
                 continue;
@@ -1011,7 +1007,7 @@ public class CUE4ParseViewModel : ViewModel
 
                 string GetLineOfText(object value)
                 {
-                    string? text = null;
+                    string text = null;
                     switch (value)
                     {
                         case FScriptStruct structTag:
@@ -1088,18 +1084,30 @@ public class CUE4ParseViewModel : ViewModel
                 ShouldAppend(GetLineOfText(propertyValue));
             }
 
+            foreach (var field in blueprint.ChildProperties)
             {
-                var childProperties = blueprint?.ChildProperties;
-                if (childProperties != null)
+                if (field is not FProperty property || strings.Contains(property.Name.Text)) continue;
+
+                var propertyName = property.Name.ToString().Replace(" ", "");
+                var type = KismetExtensions.GetPropertyType(property);
+                var prefix = KismetExtensions.GetPrefix(property.GetType().Name);
+
+                string whatever;
+                if (property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) ||
+                    property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) ||
+                    KismetExtensions.GetPropertyProperty(property))
                 {
-                    foreach (FProperty property in childProperties)
-                    {
-                        if (!strings.Contains(property.Name.PlainText))
-                            outputBuilder.AppendLine(
-                            $"\t{KismetExtensions.GetPrefix(property.GetType().Name)}{KismetExtensions.GetPropertyType(property)}{(property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) || property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) || KismetExtensions.GetPropertyProperty(property) ? "*" : string.Empty)} {property.Name.PlainText.Replace(" ", "")} = {property.Name.PlainText.Replace(" ", "")}placeholder;");
-                    }
+                    whatever = "*";
+                }
+                else
+                {
+                    whatever = string.Empty;
                 }
 
+                outputBuilder.AppendLine($"\t{prefix}{type}{whatever} {propertyName} = {propertyName}placeholder;");
+            }
+
+            {
                 var funcMapOrder = blueprint?.FuncMap?.Keys.Select(fname => fname.ToString()).ToList();
                 var functions = pkg.ExportsLazy
                 .Where(e => e.Value is UFunction)
@@ -1218,7 +1226,7 @@ public class CUE4ParseViewModel : ViewModel
 
     private void SaveAndPlaySound(string fullPath, string ext, byte[] data)
     {
-        if (fullPath.StartsWith("/")) fullPath = fullPath[1..];
+        if (fullPath.StartsWith('/')) fullPath = fullPath[1..];
         var savedAudioPath = Path.Combine(UserSettings.Default.AudioDirectory,
             UserSettings.Default.KeepDirectoryStructure ? fullPath : fullPath.SubstringAfterLast('/')).Replace('\\', '/') + $".{ext.ToLowerInvariant()}";
 
