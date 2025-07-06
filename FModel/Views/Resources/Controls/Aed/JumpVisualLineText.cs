@@ -11,17 +11,14 @@ namespace FModel.Views.Resources.Controls;
 
 public class JumpVisualLineText : VisualLineText
 {
-    private ThreadWorkerViewModel _threadWorkerView => ApplicationService.ThreadWorkerView;
-    private ApplicationViewModel _applicationView => ApplicationService.ApplicationView;
-
     public delegate void JumpOnClick(string Jump);
 
     public event JumpOnClick OnJumpClicked;
-    private readonly string _Jump;
+    private readonly string _jump;
 
-    public JumpVisualLineText(string Jump, VisualLine parentVisualLine, int length) : base(parentVisualLine, length)
+    public JumpVisualLineText(string jump, VisualLine parentVisualLine, int length) : base(parentVisualLine, length)
     {
-        _Jump = Jump;
+        _jump = jump;
     }
 
     public override TextRun CreateTextRun(int startVisualColumn, ITextRunConstructionContext context)
@@ -38,7 +35,7 @@ public class JumpVisualLineText : VisualLineText
         return new TextCharacters(text.Text, text.Offset, text.Count, TextRunProperties);
     }
 
-    private bool JumpIsClickable() => !string.IsNullOrEmpty(_Jump) && Keyboard.Modifiers == ModifierKeys.None;
+    private bool JumpIsClickable() => !string.IsNullOrEmpty(_jump) && Keyboard.Modifiers == ModifierKeys.None;
 
     protected override void OnQueryCursor(QueryCursorEventArgs e)
     {
@@ -55,23 +52,21 @@ public class JumpVisualLineText : VisualLineText
         if (e.Handled || OnJumpClicked == null)
             return;
 
-        OnJumpClicked(_Jump);
+        OnJumpClicked(_jump);
         e.Handled = true;
     }
 
     protected override VisualLineText CreateInstance(int length)
     {
-        var a = new JumpVisualLineText(_Jump, ParentVisualLine, length);
-        a.OnJumpClicked += async (Jump) =>
+        var a = new JumpVisualLineText(_jump, ParentVisualLine, length);
+        a.OnJumpClicked += jump =>
         {
-            var lineNumber = a.ParentVisualLine.Document.Text.GetNameLineNumberText($"Label_{_Jump}:");
-
+            var lineNumber = a.ParentVisualLine.Document.Text.GetNameLineNumberText($"\t\tLabel_{jump}:");
             if (lineNumber > -1)
             {
                 var line = a.ParentVisualLine.Document.GetLineByNumber(lineNumber);
                 AvalonEditor.YesWeEditor.Select(line.Offset, line.Length);
                 AvalonEditor.YesWeEditor.ScrollToLine(lineNumber);
-                return;
             }
         };
         return a;
