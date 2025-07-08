@@ -60,12 +60,12 @@ using SkiaSharp;
 using UE4Config.Parsing;
 using Application = System.Windows.Application;
 using FGuid = CUE4Parse.UE4.Objects.Core.Misc.FGuid;
-using CUE4Parse.UE4.Assets.Objects.Properties;
 using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Kismet;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.GameplayTags;
 using System.Text;
+using AssetRipper.TextureDecoder.Rgb;
 
 
 namespace FModel.ViewModels;
@@ -353,7 +353,7 @@ public class CUE4ParseViewModel : ViewModel
             {
                 var mappingsFolder = Path.Combine(UserSettings.Default.OutputDirectory, ".data");
                 if (endpoint.Path == "$.[?(@.meta.compressionMethod=='Oodle')].['url','fileName']") endpoint.Path = "$.[0].['url','fileName']";
-                var mappings = _apiEndpointView.DynamicApi.GetMappings(default, endpoint.Url, endpoint.Path);
+                var mappings = _apiEndpointView.DynamicApi.GetMappings(CancellationToken.None, endpoint.Url, endpoint.Path);
                 if (mappings is { Length: > 0 })
                 {
                     foreach (var mapping in mappings)
@@ -428,7 +428,7 @@ public class CUE4ParseViewModel : ViewModel
             var ioStoreOnDemandPath = Path.Combine(UserSettings.Default.GameDirectory, "..\\..\\..\\Cloud", inst[0].Value.SubstringAfterLast("/").SubstringBefore("\""));
             if (!File.Exists(ioStoreOnDemandPath)) return;
 
-            await _apiEndpointView.EpicApi.VerifyAuth(default);
+            await _apiEndpointView.EpicApi.VerifyAuth(CancellationToken.None);
             await Provider.RegisterVfs(new IoChunkToc(ioStoreOnDemandPath), new IoStoreOnDemandOptions
             {
                 ChunkBaseUri = new Uri("https://download.epicgames.com/ias/fortnite/", UriKind.Absolute),
@@ -471,7 +471,7 @@ public class CUE4ParseViewModel : ViewModel
         if (!Provider.ProjectName.Equals("fortnitegame", StringComparison.OrdinalIgnoreCase) || HotfixedResourcesDone) return Task.CompletedTask;
         return Task.Run(() =>
         {
-            var hotfixes = ApplicationService.ApiEndpointView.CentralApi.GetHotfixes(default, Provider.GetLanguageCode(UserSettings.Default.AssetLanguage));
+            var hotfixes = ApplicationService.ApiEndpointView.CentralApi.GetHotfixes(CancellationToken.None, Provider.GetLanguageCode(UserSettings.Default.AssetLanguage));
             if (hotfixes == null) return;
 
             Provider.Internationalization.Override(hotfixes);
@@ -796,7 +796,7 @@ public class CUE4ParseViewModel : ViewModel
         }
     }
 
-    private bool CheckExport(CancellationToken cancellationToken, IPackage pkg, int index, EBulkType bulk = EBulkType.None) // return true once you wanna stop searching for exports
+    private bool CheckExport(CancellationToken cancellationToken, IPackage pkg, int index, EBulkType bulk = EBulkType.None) // return true once you want to stop searching for exports
     {
         var isNone = bulk == EBulkType.None;
         var updateUi = !HasFlag(bulk, EBulkType.Auto);
@@ -999,8 +999,9 @@ public class CUE4ParseViewModel : ViewModel
             if (dummy is not UClass || pointer.Object.Value is not UClass blueprint)
                 continue;
 
-            var typePrefix = KismetExtensions.GetPrefix(blueprint.GetType().Name);
-            outputBuilder.AppendLine($"class {typePrefix}{blueprint.Name} : public {typePrefix}{blueprint?.SuperStruct?.Name ?? string.Empty}\n{{\npublic:");
+            var typePrefix = blueprint?.SuperStruct.Load<UStruct>().GetPrefix();
+            var modifierStr = blueprint.Flags.HasAnyFlags(EObjectFlags.RF_Public) ? "public" : "private";
+            outputBuilder.AppendLine($"class {typePrefix}{blueprint.Name} : {modifierStr} {typePrefix}{blueprint?.SuperStruct?.Name ?? string.Empty}\n{{\n{modifierStr}:");
 
             if (!blueprint.ClassDefaultObject.TryLoad(out var bpObject))
                 continue;
@@ -1110,21 +1111,19 @@ public class CUE4ParseViewModel : ViewModel
 
                 var propertyName = property.Name.ToString().Replace(" ", "");
                 var type = KismetExtensions.GetPropertyType(property);
-                var prefix = KismetExtensions.GetPrefix(property.GetType().Name);
 
-                string pointerIdentifier;
-                if (property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) ||
-                    property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) ||
-                    KismetExtensions.GetPropertyProperty(property))
+                var prefix = "";
+                switch (property)
                 {
-                    pointerIdentifier = "*";
-                }
-                else
-                {
-                    pointerIdentifier = string.Empty;
+                    case FFieldPathProperty pathProp:
+                        prefix = pathProp.PropertyClass.ToString().GetPrefix();
+                        break;
+                    case FObjectProperty objectProp:
+                        prefix = objectProp.PropertyClass.ToString().GetPrefix();
+                        break;
                 }
 
-                outputBuilder.AppendLine($"\t{prefix}{type}{pointerIdentifier} {propertyName} = {propertyName}fmodelholder;");
+                outputBuilder.AppendLine($"\t{prefix}{type}{(KismetExtensions.isPointer(property) ? '*' : "")} {propertyName} = {propertyName}fmodelholder;");
             }
 
             {
@@ -1155,8 +1154,8 @@ public class CUE4ParseViewModel : ViewModel
 
                     foreach (var property in function.ScriptBytecode)
                     {
-                        string? label = null;
-                        int? offset = null;
+                        string label = string.Empty;
+                        int offset = 0;
 
                         switch (property.Token)
                         {
@@ -1173,20 +1172,20 @@ public class CUE4ParseViewModel : ViewModel
                             case EExprToken.EX_LocalFinalFunction:
                                 {
                                     EX_FinalFunction op = (EX_FinalFunction) property;
-                                    label = op.StackNode?.Name?.ToString()?.Split('.').Last().Split('[')[0];
+                                    label = op.StackNode?.Name?.Split('.').Last().Split('[')[0];
 
-                                    if (op.Parameters.Length == 1 && op.Parameters[0] is EX_IntConst intConst)
+                                    if (op is { Parameters: [EX_IntConst intConst] })
                                         offset = intConst.Value;
                                     break;
                                 }
                         }
 
-                        if (!string.IsNullOrEmpty(label) && offset.HasValue)
+                        if (!string.IsNullOrEmpty(label))
                         {
                             if (!jumpCodeOffsetsMap.TryGetValue(label, out var list))
                                 jumpCodeOffsetsMap[label] = list = new List<int>();
 
-                            list.Add(offset.Value);
+                            list.Add(offset);
                         }
                     }
                 }
@@ -1201,16 +1200,24 @@ public class CUE4ParseViewModel : ViewModel
                         {
                             var name = property.Name.ToString();
                             var plainName = property.Name.PlainText;
-                            var prefix = KismetExtensions.GetPrefix(property.GetType().Name);
+                            var prefix = "";
+                            switch (property)
+                            {
+                                case FFieldPathProperty pathProp:
+                                    prefix = pathProp.PropertyClass.ToString().GetPrefix();
+                                    break;
+                                case FObjectProperty objectProp:
+                                    prefix = objectProp.PropertyClass.ToString().GetPrefix();
+                                    break;
+                            }
                             var type = KismetExtensions.GetPropertyType(property);
                             var isConst = property.PropertyFlags.HasFlag(EPropertyFlags.ConstParm);
                             var isOut = property.PropertyFlags.HasFlag(EPropertyFlags.OutParm);
-                            var isInstanced = property.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference);
                             var isEdit = property.PropertyFlags.HasFlag(EPropertyFlags.Edit);
 
                             if (plainName == "ReturnValue")
                             {
-                                returnFunc = $"{(isConst ? "const " : "")}{prefix}{type}{(isInstanced || prefix == "U" ? "*" : "")}";
+                                returnFunc = $"{(isConst ? "const " : "")}{prefix}{type}{(KismetExtensions.isPointer(property) ? '*' : "")}";
                                 continue;
                             }
 
@@ -1220,7 +1227,7 @@ public class CUE4ParseViewModel : ViewModel
                                 continue;
 
                             var strippedVerseName = Regex.Replace(name, @"^__verse_0x[0-9A-Fa-f]+_", "");
-                            argsList += $"{(isConst ? "const " : "")}{prefix}{type}{(isInstanced || prefix == "U" ? "*" : "")}{(isOut ? "&" : "")} {strippedVerseName}, ";
+                            argsList += $"{(isConst ? "const " : "")}{prefix}{type}{(KismetExtensions.isPointer(property) ? '*' : "")}{(isOut ? '&' : "")} {strippedVerseName}, ";
                         }
                     }
                     argsList = argsList.TrimEnd(',', ' ');

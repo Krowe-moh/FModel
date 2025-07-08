@@ -17,16 +17,43 @@ namespace FModel.Extensions;
 
 public static class KismetExtensions
 {
-    public static string GetPrefix(string type, string extra = "") // todo: implement better handling
+    public static string GetPrefix(this UStruct val)
     {
-        return type switch
+        var ret = string.Empty;
+        var super = val;
+
+        while (super is not null)
         {
-            "FNameProperty" or "FPackageIndex" or "FTextProperty" or "FStructProperty" => "F",
-            "UBlueprintGeneratedClass" or "FActorProperty" => "A",
-            "FObjectProperty" when extra.Contains("Actor") => "A",
-            "ResolvedScriptObject" or "ResolvedLoadedObject" or "FSoftObjectProperty" or "FObjectProperty" => "U",
-            _ => ""
-        };
+            if (super.Name == "Actor")
+            {
+                ret += 'A';
+                break;
+            }
+
+            if (super.Name == "Interface")
+            {
+                ret += 'I';
+                break;
+            }
+
+            if (super.Name == "Object")
+            {
+                ret += 'U';
+                break;
+            }
+
+            super = super?.SuperStruct?.Load<UStruct>();
+        }
+
+        if (string.IsNullOrEmpty(ret))
+            ret += 'U';
+
+        return ret;
+    }
+
+    public static string GetPrefix(this string val) // todo: val.Contains("Struct") ? "F" findout
+    {
+        return val.Contains(".Actor") ? "A" : val.Contains("Interface") ? "I" : "U";
     }
 
     // GetUnknownFieldType and GetPropertyType from
@@ -77,33 +104,22 @@ public static class KismetExtensions
             _ => GetUnknownFieldType(property)
         };
     }
-    public static string GetPropertyType(FProperty? property)
+    public static bool isPointer(FProperty p) =>
+        p.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) ||
+        p.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) ||
+        p.PropertyFlags.HasFlag(EPropertyFlags.ContainsInstancedReference) ||
+        p.GetType() == typeof(FObjectProperty);
+
+    public static string GetPropertyType(FProperty property)
     {
         if (property is null) return "None";
 
-        bool isPointer(FProperty p) =>
-            p.PropertyFlags.HasFlag(EPropertyFlags.InstancedReference) ||
-            property.PropertyFlags.HasFlag(EPropertyFlags.ReferenceParm) ||
-            p.PropertyFlags.HasFlag(EPropertyFlags.ContainsInstancedReference);
-
         return property switch
         {
-            FSetProperty s => $"TSet<{GetPrefix(s.ElementProp.GetType().Name)}{GetPropertyType(s.ElementProp)}{(isPointer(s) ? "*" : "")}>",
-            FMapProperty m => $"TMap<{GetPrefix(m.KeyProp.GetType().Name)}{GetPropertyType(m.KeyProp)}, {GetPrefix(m.ValueProp.GetType().Name)}{GetPropertyType(m.ValueProp)}{(isPointer(m) ? "*" : "")}>",
-            FArrayProperty a => $"TArray<{GetPrefix(a.Inner.GetType().Name)}{GetPropertyType(a.Inner)}{(isPointer(a) || GetPropertyProperty(a.Inner.GetType().Name) ? "*" : "")}>",
+            FSetProperty s => $"TSet<{s?.ElementProp.GetType().Name.GetPrefix()}{GetPropertyType(s.ElementProp)}{(isPointer(s) ? "*" : "")}>",
+            FMapProperty m => $"TMap<{m?.KeyProp.GetType().Name.GetPrefix()}{GetPropertyType(m.KeyProp)}, {m.ValueProp.GetType().Name.GetPrefix()}{GetPropertyType(m.ValueProp)}{(isPointer(m) ? "*" : "")}>",
+            FArrayProperty a => $"TArray<{a?.Inner.GetType().Name.GetPrefix()}{GetPropertyType(a.Inner)}{(isPointer(a) || a.Inner.GetType().Name == nameof(FObjectProperty) ? "*" : "")}>",
             _ => GetPropertyType((object)property)
-        };
-    }
-
-    public static bool GetPropertyProperty(object? property)
-    {
-        if (property is null)
-            return false;
-
-        return property switch
-        {
-            FObjectProperty => true,
-            _ => false
         };
     }
 
@@ -245,7 +261,7 @@ public static class KismetExtensions
                     }
                     else
                     {
-                        outputBuilder.Append($"\t\t{GetPrefix(op?.StackNode?.ResolvedObject?.Outer?.GetType()?.Name ?? string.Empty)}{op?.StackNode?.Name.Replace(" ", "")}(");
+                        outputBuilder.Append($"\t\t{op?.StackNode?.ResolvedObject?.Outer?.GetType()?.Name.GetPrefix()}{op?.StackNode?.Name.Replace(" ", "")}(");
                     }
 
                     for (int i = 0; i < opp.Length; i++)
@@ -275,7 +291,7 @@ public static class KismetExtensions
                     }
                     else
                     {
-                        outputBuilder.Append($"\t\t{op?.StackNode?.Name.Replace(" ", "")}(");//{GetPrefix(op?.StackNode?.ResolvedObject?.Outer?.GetType()?.Name)}
+                        outputBuilder.Append($"\t\t{op?.StackNode?.Name.Replace(" ", "")}(");// maybe use GetPrefix(op?.StackNode?.ResolvedObject?.Outer?.GetType()?.Name)}
                     }
 
                     for (int i = 0; i < opp.Length; i++)
@@ -296,7 +312,7 @@ public static class KismetExtensions
                     EX_FinalFunction op = (EX_FinalFunction) expression;
                     KismetExpression[] opp = op.Parameters;
                     outputBuilder.Append(isParameter ? string.Empty : "\t\t");
-                    outputBuilder.Append($"{GetPrefix(op.StackNode.ResolvedObject.Outer.GetType().Name)}{op.StackNode.ResolvedObject.Outer.Name.ToString().Replace(" ", "")}::{op.StackNode.Name}(");
+                    outputBuilder.Append($"{op.StackNode.ResolvedObject.Outer.GetType().Name.GetPrefix()}{op.StackNode.ResolvedObject.Outer.Name.ToString().Replace(" ", "")}::{op.StackNode.Name}(");
 
                     for (int i = 0; i < opp.Length; i++)
                     {
@@ -606,7 +622,7 @@ public static class KismetExtensions
             case EExprToken.EX_StructConst:
                 {
                     EX_StructConst op = (EX_StructConst) expression;
-                    outputBuilder.Append($"{GetPrefix(op.Struct.GetType().Name)}{op.Struct.Name}");
+                    outputBuilder.Append($"{op.Struct.GetType().Name.GetPrefix()}{op.Struct.Name}");
                     outputBuilder.Append('(');
                     for (int i = 0; i < op.Properties.Length; i++)
                     {
@@ -627,11 +643,11 @@ public static class KismetExtensions
                     if (classString?.Contains('.') == true)
                     {
 
-                        outputBuilder.Append(GetPrefix(op?.Value?.ResolvedObject?.Class?.GetType().Name) + classString.Split('.')[1]);
+                        outputBuilder.Append(op?.Value?.ResolvedObject?.Class?.GetType().Name.GetPrefix() + classString.Split('.')[1]);
                     }
                     else
                     {
-                        outputBuilder.Append(GetPrefix(op?.Value?.ResolvedObject?.Class?.GetType().Name) + classString);
+                        outputBuilder.Append(op?.Value?.ResolvedObject?.Class?.GetType().Name.GetPrefix() + classString);
                     }
                     outputBuilder.Append(">(\"");
                     var resolvedObject = op?.Value?.ResolvedObject;
@@ -883,7 +899,7 @@ public static class KismetExtensions
                     if (!check)
                         outputBuilder.Append(' ');
                     ProcessExpression(op.ReturnExpression.Token, op.ReturnExpression, outputBuilder, jumpCodeOffsets, true);
-                    outputBuilder.AppendLine(";\n\n");
+                    outputBuilder.AppendLine(";");
                     break;
                 }
             case EExprToken.EX_RotationConst:
