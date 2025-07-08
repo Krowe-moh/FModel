@@ -588,18 +588,29 @@ public class CUE4ParseViewModel : ViewModel
                 break;
             }
             case "upluginmanifest":
+            case "code-workspace":
             case "projectstore":
+            case "uefnproject":
             case "uproject":
             case "manifest":
             case "uplugin":
             case "archive":
             case "dnearchive": // Banishers: Ghosts of New Eden
             case "gitignore":
+            case "LICENSE":
+            case "template":
             case "vmodule":
+            case "glslfx":
+            case "cptake":
             case "uparam": // Steel Hunters
+            case "spi1d":
             case "verse":
             case "html":
             case "json":
+            case "uref":
+            case "cube":
+            case "usda":
+            case "ocio":
             case "ini":
             case "txt":
             case "log":
@@ -617,6 +628,10 @@ public class CUE4ParseViewModel : ViewModel
             case "pem":
             case "tps":
             case "tgc": // State of Decay 2
+            case "cpp":
+            case "apx":
+            case "udn":
+            case "doc":
             case "lua":
             case "js":
             case "po":
@@ -677,8 +692,13 @@ public class CUE4ParseViewModel : ViewModel
                 break;
             }
             case "xvag":
+            case "flac":
             case "at9":
             case "wem":
+            case "wav":
+            case "WAV":
+            case "ogg":
+            // todo: CSCore.MediaFoundation.MediaFoundationException The byte stream type of the given URL is unsupported. case "aif":
             {
                 var data = Provider.SaveAsset(entry);
                 SaveAndPlaySound(entry.PathWithoutExtension, entry.Extension, data);
