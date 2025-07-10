@@ -41,7 +41,6 @@ using CUE4Parse.FileProvider.Objects;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.BinaryConfig;
 using CUE4Parse.UE4.Objects.UObject;
-using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.Utils;
 using EpicManifestParser;
 using EpicManifestParser.UE;
@@ -269,7 +268,7 @@ public class CUE4ParseViewModel : ViewModel
             }
 
             Provider.Initialize();
-            _wwiseProviderLazy = new Lazy<WwiseProvider>(() => new WwiseProvider(Provider));
+            _wwiseProviderLazy = new Lazy<WwiseProvider>(() => new WwiseProvider(Provider, UserSettings.Default.WwiseMaxBnkPrefetch));
             Log.Information($"{Provider.Versions.Game} ({Provider.Versions.Platform}) | Archives: x{Provider.UnloadedVfs.Count} | AES: x{Provider.RequiredKeys.Count} | Loose Files: x{Provider.Files.Count}");
         });
     }
@@ -674,9 +673,11 @@ public class CUE4ParseViewModel : ViewModel
                 var archive = entry.CreateReader();
                 var wwise = new WwiseReader(archive);
                 TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(wwise, Formatting.Indented), saveProperties, updateUi);
-                foreach (var (name, data) in wwise.WwiseEncodedMedias)
+
+                var medias = WwiseProvider.ExtractBankSounds(wwise);
+                foreach (var media in medias)
                 {
-                    SaveAndPlaySound(entry.Path.SubstringBeforeWithLast('/') + name, "WEM", data);
+                    SaveAndPlaySound(media.OutputPath, media.Extension, media.Data);
                 }
 
                 break;
