@@ -257,12 +257,19 @@ public class BaseIcon : UCreator
 
         var season = Utils.GetLocalizedResource("AthenaSeasonItemDefinitionInternal", "SeasonTextFormat", "Season {0}");
         var introduced = Utils.GetLocalizedResource("Fort.Cosmetics", "CosmeticItemDescription_Season", "\nIntroduced in <SeasonText>{0}</>.");
+        if (s == "10") return Utils.RemoveHtmlTags(string.Format(introduced, string.Format(season, "X")));
         if (initial <= 10) return Utils.RemoveHtmlTags(string.Format(introduced, string.Format(season, s)));
 
         var chapter = Utils.GetLocalizedResource("AthenaSeasonItemDefinitionInternal", "ChapterTextFormat", "Chapter {0}");
         var chapterFormat = Utils.GetLocalizedResource("AthenaSeasonItemDefinitionInternal", "ChapterSeasonTextFormat", "{0}, {1}");
         var d = string.Format(chapterFormat, string.Format(chapter, chapterIdx), string.Format(season, seasonIdx));
-        return Utils.RemoveHtmlTags(string.Format(introduced, d));
+        return s switch
+        {
+            "27" => Utils.RemoveHtmlTags(string.Format(introduced, string.Format("Fortnite: OG"))),
+            "32" => Utils.RemoveHtmlTags(string.Format(introduced, string.Format("Fortnite: Remix"))),
+            "35" => Utils.RemoveHtmlTags(string.Format(introduced, string.Format(chapterFormat, string.Format(chapter, chapterIdx), string.Format("MS1")))),
+            _ => Utils.RemoveHtmlTags(string.Format(introduced, d))
+        };
     }
 
     protected void CheckGameplayTags(FInstancedStruct[] dataList)

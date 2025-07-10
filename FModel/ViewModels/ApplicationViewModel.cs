@@ -260,7 +260,7 @@ public class ApplicationViewModel : ViewModel
         ZlibHelper.Initialize(zlibPath);
     }
 
-    public static async ValueTask InitDetex()
+    public static async Task InitDetex()
     {
         var detexPath = Path.Combine(UserSettings.Default.OutputDirectory, ".data", DetexHelper.DLL_NAME);
         if (File.Exists(DetexHelper.DLL_NAME))

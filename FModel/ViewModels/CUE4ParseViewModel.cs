@@ -39,6 +39,8 @@ using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
 using CUE4Parse.FileProvider.Objects;
 using CUE4Parse.UE4.Assets;
+using CUE4Parse.UE4.BinaryConfig;
+using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.Utils;
 using EpicManifestParser;
@@ -165,6 +167,7 @@ public class CUE4ParseViewModel : ViewModel
 
         Provider.ReadScriptData = UserSettings.Default.ReadScriptData;
         Provider.ReadShaderMaps = UserSettings.Default.ReadShaderMaps;
+        Provider.ReadNaniteData = true;
 
         GameDirectory = new GameDirectoryViewModel();
         AssetsFolder = new AssetsFolderViewModel();
@@ -195,7 +198,7 @@ public class CUE4ParseViewModel : ViewModel
                             {
                                 ChunkCacheDirectory = cacheDir,
                                 ManifestCacheDirectory = cacheDir,
-                                ChunkBaseUrl = "http://epicgames-download1.akamaized.net/Builds/Fortnite/CloudDir/",
+                                ChunkBaseUrl = "http://download.epicgames.com/Builds/Fortnite/CloudDir/",
                                 Decompressor = ManifestZlibngDotNetDecompressor.Decompress,
                                 DecompressorState = ZlibHelper.Instance,
                                 CacheChunksAsIs = false
@@ -208,7 +211,7 @@ public class CUE4ParseViewModel : ViewModel
                             {
                                 (manifest, _) = manifestInfo.DownloadAndParseAsync(manifestOptions,
                                     cancellationToken: cancellationToken,
-                                    elementManifestPredicate: static x => x.Uri.Host != "cloudflare.epicgamescdn.com"
+                                    elementManifestPredicate: static x => x.Uri.Host == "download.epicgames.com"
                                 ).GetAwaiter().GetResult();
                             }
                             catch (HttpRequestException ex)
@@ -579,6 +582,16 @@ public class CUE4ParseViewModel : ViewModel
                     if (CheckExport(cancellationToken, result.Package, i, bulk))
                         break;
                 }
+
+                break;
+            }
+            case "ini" when entry.Name.Contains("BinaryConfig"):
+            {
+                var ar = entry.CreateReader();
+                var configCache = new FConfigCacheIni(ar);
+
+                TabControl.SelectedTab.Highlighter = AvalonExtensions.HighlighterSelector("json");
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(configCache, Formatting.Indented), saveProperties, updateUi);
 
                 break;
             }
