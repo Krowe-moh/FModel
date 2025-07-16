@@ -164,6 +164,7 @@ public class CUE4ParseViewModel : ViewModel
                     [
                         new(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) + "\\KONAMI\\eFootball\\ST\\Download")
                     ], SearchOption.AllDirectories, versionContainer, pathComparer),
+                    _ when versionContainer.Game is EGame.GAME_AshEchoes => new AEDefaultFileProvider(gameDirectory, SearchOption.AllDirectories, versionContainer, pathComparer),
                     _ => new DefaultFileProvider(gameDirectory, SearchOption.AllDirectories, versionContainer, pathComparer)
                 };
 
@@ -607,6 +608,7 @@ public class CUE4ParseViewModel : ViewModel
             case "uplugin":
             case "archive":
             case "dnearchive": // Banishers: Ghosts of New Eden
+            case "stUMeta": // LIS: Double Exposure
             case "vmodule":
             case "uparam": // Steel Hunters
             case "verse":
@@ -758,6 +760,8 @@ public class CUE4ParseViewModel : ViewModel
                 break;
             }
             case "res": // just skip
+            case "luac": // compiled lua
+            case "bytes": // wuthering waves
                 break;
             default:
             {
