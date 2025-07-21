@@ -39,6 +39,7 @@ using CUE4Parse.UE4.Wwise;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
 using CUE4Parse.FileProvider.Objects;
+using CUE4Parse.GameTypes.AshEchoes.FileProvider;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.BinaryConfig;
 using CUE4Parse.UE4.Objects.UObject;
