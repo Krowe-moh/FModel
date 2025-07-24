@@ -58,6 +58,14 @@
                         </TextBox.Style>
                     </TextBox>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button ToolTip="Sort File Sizes" Padding="5" Command="{Binding CUE4Parse.SearchVm.SortSizeModeCommand}" Style="{DynamicResource {x:Static adonisUi:Styles.ToolbarButton}}">
+                            <Viewbox Width="16" Height="16" HorizontalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource {x:Static adonisUi:Brushes.ForegroundBrush}}" Data="{StaticResource SortIcon}" />
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+
                         <ToggleButton ToolTip="Match Case" Padding="5" IsChecked="{Binding CUE4Parse.SearchVm.HasMatchCaseEnabled}" Style="{DynamicResource {x:Static adonisUi:Styles.ToolbarToggleButton}}">
                             <Viewbox Width="16" Height="16" HorizontalAlignment="Center">
                                 <Canvas Width="24" Height="24">

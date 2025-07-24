@@ -74,10 +74,12 @@ public class CUE4ParseViewModel : ViewModel
 {
     private ThreadWorkerViewModel _threadWorkerView => ApplicationService.ThreadWorkerView;
     private ApiEndpointViewModel _apiEndpointView => ApplicationService.ApiEndpointView;
+
     private readonly Regex _fnLiveRegex = new(@"^FortniteGame[/\\]Content[/\\]Paks[/\\]",
         RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private bool _modelIsOverwritingMaterial;
+
     public bool ModelIsOverwritingMaterial
     {
         get => _modelIsOverwritingMaterial;
@@ -86,6 +88,7 @@ public class CUE4ParseViewModel : ViewModel
 
     public bool IsSnooperOpen => _snooper is { Exists: true, IsVisible: true };
     private Snooper _snooper;
+
     public Snooper SnooperViewer
     {
         get
@@ -445,6 +448,7 @@ public class CUE4ParseViewModel : ViewModel
     public int LocalizedResourcesCount { get; set; }
     public bool LocalResourcesDone { get; set; }
     public bool HotfixedResourcesDone { get; set; }
+
     public async Task LoadLocalizedResources()
     {
         var snapshot = LocalizedResourcesCount;
@@ -458,6 +462,7 @@ public class CUE4ParseViewModel : ViewModel
             Utils.Typefaces = new Typefaces(this);
         }
     }
+
     private Task LoadGameLocalizedResources()
     {
         if (LocalResourcesDone) return Task.CompletedTask;
@@ -466,6 +471,7 @@ public class CUE4ParseViewModel : ViewModel
             LocalResourcesDone = Provider.TryChangeCulture(Provider.GetLanguageCode(UserSettings.Default.AssetLanguage));
         });
     }
+
     private Task LoadHotfixedLocalizedResources()
     {
         if (!Provider.ProjectName.Equals("fortnitegame", StringComparison.OrdinalIgnoreCase) || HotfixedResourcesDone) return Task.CompletedTask;
@@ -480,6 +486,7 @@ public class CUE4ParseViewModel : ViewModel
     }
 
     private int _virtualPathCount { get; set; }
+
     public Task LoadVirtualPaths()
     {
         if (_virtualPathCount > 0) return Task.CompletedTask;
@@ -698,7 +705,7 @@ public class CUE4ParseViewModel : ViewModel
             case "wav":
             case "WAV":
             case "ogg":
-            // todo: CSCore.MediaFoundation.MediaFoundationException The byte stream type of the given URL is unsupported. case "aif":
+                // todo: CSCore.MediaFoundation.MediaFoundationException The byte stream type of the given URL is unsupported. case "aif":
             {
                 var data = Provider.SaveAsset(entry);
                 SaveAndPlaySound(entry.PathWithoutExtension, entry.Extension, data);
@@ -988,271 +995,34 @@ public class CUE4ParseViewModel : ViewModel
 
         var pkg = Provider.LoadPackage(entry);
 
-        var outputBuilder = new StringBuilder();
+        string mypathisapathrealwhathowPath = Path.Combine(
+            Path.GetDirectoryName(entry.Path)!,
+            $"{Path.GetFileNameWithoutExtension(entry.Path)}.o.uasset"
+        );
+
+        string idkhowtogetitwithoutthis = string.Empty;
+        try
+        {
+            var whatisthisforealreal = Provider.GetLoadPackageResult(mypathisapathrealwhathowPath);
+            idkhowtogetitwithoutthis = JsonConvert.SerializeObject(whatisthisforealreal.GetDisplayData(false), Formatting.Indented);
+        }
+        catch (Exception e) {}
+
+
+        var cpp = string.Empty;
         for (var i = 0; i < pkg.ExportMapLength; i++)
         {
             var pointer = new FPackageIndex(pkg, i + 1).ResolvedObject;
-            if (pointer?.Object is null)
+            if (pointer?.Object is null && pointer.Class?.Object?.Value is null)
                 continue;
 
             var dummy = ((AbstractUePackage) pkg).ConstructObject(pointer.Class?.Object?.Value as UStruct, pkg);
             if (dummy is not UClass || pointer.Object.Value is not UClass blueprint)
                 continue;
 
-            var typePrefix = blueprint?.SuperStruct.Load<UStruct>().GetPrefix();
-            var modifierStr = blueprint.Flags.HasAnyFlags(EObjectFlags.RF_Public) ? "public" : "private";
-            outputBuilder.AppendLine($"class {typePrefix}{blueprint.Name} : {modifierStr} {typePrefix}{blueprint?.SuperStruct?.Name ?? string.Empty}\n{{\n{modifierStr}:");
-
-            if (!blueprint.ClassDefaultObject.TryLoad(out var bpObject))
-                continue;
-
-            var strings = new List<string>();
-            foreach (var property in bpObject.Properties)
-            {
-                var propertyName = property.Name.ToString();
-                var propertyValue = property.Tag?.GenericValue;
-                strings.Add(propertyName);
-                string placeholder = $"{propertyName}fmodelholder"; // spelling mistake is intended
-
-                void ShouldAppend(string value)
-                {
-                    if (outputBuilder.ToString().Contains(placeholder))
-                    {
-                        outputBuilder.Replace(placeholder, value);
-                    }
-                    else
-                    {
-                        outputBuilder.AppendLine($"\t{KismetExtensions.GetPropertyType(propertyValue)} {propertyName.Replace(" ", "")} = {value};");
-                    }
-                }
-
-                string GetLineOfText(object value)
-                {
-                    string text = null;
-                    switch (value)
-                    {
-                        case FScriptStruct structTag:
-                            switch (structTag.StructType)
-                            {
-                                case FVector vector:
-                                    text = $"FVector({vector.X}, {vector.Y}, {vector.Z})";
-                                    break;
-                                case FGuid guid:
-                                    text = $"FGuid({guid.A}, {guid.B}, {guid.C}, {guid.D})";
-                                    break;
-                                case TIntVector3<int> vector3:
-                                    text = $"FVector({vector3.X}, {vector3.Y}, {vector3.Z})";
-                                    break;
-                                case TIntVector3<float> floatVector3:
-                                    text = $"FVector({floatVector3.X}, {floatVector3.Y}, {floatVector3.Z})";
-                                    break;
-                                case TIntVector2<float> floatVector2:
-                                    text = $"FVector2D({floatVector2.X}, {floatVector2.Y})";
-                                    break;
-                                case FVector2D vector2d:
-                                    text = $"FVector2D({vector2d.X}, {vector2d.Y})";
-                                    break;
-                                case FRotator rotator:
-                                    text = $"FRotator({rotator.Pitch}, {rotator.Yaw}, {rotator.Roll})";
-                                    break;
-                                case FLinearColor linearColor:
-                                    text = $"FLinearColor({linearColor.R}, {linearColor.G}, {linearColor.B}, {linearColor.A})";
-                                    break;
-                                case FGameplayTagContainer gTag:
-                                    text = gTag.GameplayTags.Length switch
-                                    {
-                                        > 1 => "[\n" + string.Join(",\n", gTag.GameplayTags.Select(tag => $"\t\t\"{tag.TagName}\"")) + "\n\t]",
-                                        > 0 => $"\"{gTag.GameplayTags[0].TagName}\"",
-                                        _ => "[]"
-                                    };
-                                    break;
-                                case FStructFallback fallback:
-                                    if (fallback.Properties.Count > 0)
-                                    {
-                                        text = "[\n" + string.Join(",\n", fallback.Properties.Select(p => $"\t\"{GetLineOfText(p)}\"")) + "\n\t]";
-                                    }
-                                    else
-                                    {
-                                        text = "[]";
-                                    }
-                                    break;
-                            }
-                            break;
-                        case UScriptSet:
-                        case UScriptMap:
-                        case UScriptArray:
-                            IEnumerable<string> inner = value switch
-                            {
-                                UScriptSet set => set.Properties.Select(p => $"\t\"{p.GenericValue}\""),
-                                UScriptMap map => map.Properties.Select(kvp => $"\t{{\n\t\t\"{kvp.Key}\": \"{kvp.Value}\"\n\t}}"),
-                                UScriptArray array => array.Properties.Select(p => $"\t\"{GetLineOfText(p)}\""),
-                                _ => throw new ArgumentOutOfRangeException(nameof(value), value, null)
-                            };
-
-                            text = "[\n" + string.Join(",\n", inner) + "\n\t]";
-                            break;
-                        case FMulticastScriptDelegate multicast:
-                            text = multicast.InvocationList.Length == 0 ? "[]" : $"[{string.Join(", ", multicast.InvocationList.Select(x => $"\"{x.FunctionName}\""))}]";
-                            break;
-                        case bool:
-                            text = value.ToString()?.ToLowerInvariant();
-                            break;
-                    }
-
-                    return text ?? value.ToString();
-                }
-
-                ShouldAppend(GetLineOfText(propertyValue));
-            }
-
-            foreach (var field in blueprint.ChildProperties)
-            {
-                if (field is not FProperty property || strings.Contains(property.Name.Text)) continue;
-
-                var propertyName = property.Name.ToString().Replace(" ", "");
-                var type = KismetExtensions.GetPropertyType(property);
-
-                var prefix = "";
-                switch (property)
-                {
-                    case FFieldPathProperty pathProp:
-                        prefix = pathProp.PropertyClass.ToString().GetPrefix();
-                        break;
-                    case FObjectProperty objectProp:
-                        prefix = objectProp.PropertyClass.ToString().GetPrefix();
-                        break;
-                }
-
-                outputBuilder.AppendLine($"\t{prefix}{type}{(KismetExtensions.isPointer(property) ? '*' : "")} {propertyName} = {propertyName}fmodelholder;");
-            }
-
-            {
-                var funcMapOrder = blueprint?.FuncMap?.Keys.Select(fname => fname.ToString()).ToList();
-                var functions = pkg.ExportsLazy
-                .Where(e => e.Value is UFunction)
-                .Select(e => (UFunction) e.Value)
-                    .OrderBy(f =>
-                    {
-                        if (funcMapOrder != null)
-                        {
-                            var functionName = f.Name.ToString();
-                            int index = funcMapOrder.IndexOf(functionName);
-                            return index >= 0 ? index : int.MaxValue;
-                        }
-
-                        return int.MaxValue;
-                    })
-                    .ThenBy(f => f.Name.ToString())
-                    .ToList();
-
-                var jumpCodeOffsetsMap = new Dictionary<string, List<int>>();
-
-                foreach (var function in functions.AsEnumerable().Reverse())
-                {
-                    if (function?.ScriptBytecode == null)
-                        continue;
-
-                    foreach (var property in function.ScriptBytecode)
-                    {
-                        string label = string.Empty;
-                        int offset = 0;
-
-                        switch (property.Token)
-                        {
-                            case EExprToken.EX_JumpIfNot:
-                                label = ((EX_JumpIfNot) property).ObjectPath?.ToString()?.Split('.').Last().Split('[')[0];
-                                offset = (int) ((EX_JumpIfNot) property).CodeOffset;
-                                break;
-
-                            case EExprToken.EX_Jump:
-                                label = ((EX_Jump) property).ObjectPath?.ToString()?.Split('.').Last().Split('[')[0];
-                                offset = (int) ((EX_Jump) property).CodeOffset;
-                                break;
-
-                            case EExprToken.EX_LocalFinalFunction:
-                                {
-                                    EX_FinalFunction op = (EX_FinalFunction) property;
-                                    label = op.StackNode?.Name?.Split('.').Last().Split('[')[0];
-
-                                    if (op is { Parameters: [EX_IntConst intConst] })
-                                        offset = intConst.Value;
-                                    break;
-                                }
-                        }
-
-                        if (!string.IsNullOrEmpty(label))
-                        {
-                            if (!jumpCodeOffsetsMap.TryGetValue(label, out var list))
-                                jumpCodeOffsetsMap[label] = list = new List<int>();
-
-                            list.Add(offset);
-                        }
-                    }
-                }
-
-                foreach (var function in functions)
-                {
-                    string argsList = "";
-                    string returnFunc = "void";
-                    if (function?.ChildProperties != null)
-                    {
-                        foreach (FProperty property in function.ChildProperties)
-                        {
-                            var name = property.Name.ToString();
-                            var plainName = property.Name.PlainText;
-                            var prefix = "";
-                            switch (property)
-                            {
-                                case FFieldPathProperty pathProp:
-                                    prefix = pathProp.PropertyClass.ToString().GetPrefix();
-                                    break;
-                                case FObjectProperty objectProp:
-                                    prefix = objectProp.PropertyClass.ToString().GetPrefix();
-                                    break;
-                            }
-                            var type = KismetExtensions.GetPropertyType(property);
-                            var isConst = property.PropertyFlags.HasFlag(EPropertyFlags.ConstParm);
-                            var isOut = property.PropertyFlags.HasFlag(EPropertyFlags.OutParm);
-                            var isEdit = property.PropertyFlags.HasFlag(EPropertyFlags.Edit);
-
-                            if (plainName == "ReturnValue")
-                            {
-                                returnFunc = $"{(isConst ? "const " : "")}{prefix}{type}{(KismetExtensions.isPointer(property) ? '*' : "")}";
-                                continue;
-                            }
-
-                            bool uselessIgnore = name.EndsWith("_ReturnValue") || name.StartsWith("CallFunc_") || name.StartsWith("K2Node_") || name.StartsWith("Temp_"); // read variable name
-
-                            if (uselessIgnore && !isEdit)
-                                continue;
-
-                            var strippedVerseName = Regex.Replace(name, @"^__verse_0x[0-9A-Fa-f]+_", "");
-                            argsList += $"{(isConst ? "const " : "")}{prefix}{type}{(KismetExtensions.isPointer(property) ? '*' : "")}{(isOut ? '&' : "")} {strippedVerseName}, ";
-                        }
-                    }
-                    argsList = argsList.TrimEnd(',', ' ');
-
-                    outputBuilder.AppendLine($"\n\t{returnFunc} {function.Name.Replace(" ", "")}({argsList})\n\t{{");
-                    if (function?.ScriptBytecode != null)
-                    {
-                        var jumpCodeOffsets = jumpCodeOffsetsMap.TryGetValue(function.Name, out var list) ? list : new List<int>();
-                        foreach (KismetExpression property in function.ScriptBytecode)
-                        {
-                            KismetExtensions.ProcessExpression(property.Token, property, outputBuilder, jumpCodeOffsets);
-                        }
-                    }
-                    else
-                    {
-                        outputBuilder.Append("\n\t // No Bytecode (Make sure \"Serialize Script Bytecode\" is enabled \n\n");
-                        outputBuilder.Append("\t}\n");
-                    }
-                }
-
-                outputBuilder.Append("\n\n}");
-            }
+            cpp += blueprint.DecompileBlueprintToPseudo(idkhowtogetitwithoutthis);
         }
 
-        var cpp = Regex.Replace(outputBuilder.ToString(), @"\w+fmodelholder", "nullptr");
         TabControl.SelectedTab.SetDocumentText(cpp, false, false);
     }
 

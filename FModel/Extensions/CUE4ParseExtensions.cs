@@ -3,6 +3,7 @@ using CUE4Parse.FileProvider;
 using CUE4Parse.FileProvider.Objects;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Objects.UObject;
+using CUE4Parse.Utils;
 using FModel.Settings;
 
 namespace FModel.Extensions;
@@ -59,6 +60,21 @@ public static class CUE4ParseExtensions
         if (result.IsPaginated || (result.Package.HasFlags(EPackageFlags.PKG_ContainsMap) && UserSettings.Default.PreviewWorlds)) // focus on UWorld if it's a map we want to preview
         {
             result.RequestedIndex = result.Package.GetExportIndex(file.NameWithoutExtension);
+            if (objectName != null)
+            {
+                result.RequestedIndex = int.TryParse(objectName, out var index) ? index : result.Package.GetExportIndex(objectName);
+            }
+        }
+
+        return result;
+    }
+
+    public static LoadPackageResult GetLoadPackageResult(this IFileProvider provider, string file, string objectName = null)
+    {
+        var result = new LoadPackageResult { Package = provider.LoadPackage(file) };
+        if (result.IsPaginated || (result.Package.HasFlags(EPackageFlags.PKG_ContainsMap) && UserSettings.Default.PreviewWorlds)) // focus on UWorld if it's a map we want to preview
+        {
+            result.RequestedIndex = result.Package.GetExportIndex(file.SubstringBeforeLast('.'));
             if (objectName != null)
             {
                 result.RequestedIndex = int.TryParse(objectName, out var index) ? index : result.Package.GetExportIndex(objectName);

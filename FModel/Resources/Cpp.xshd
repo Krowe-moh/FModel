@@ -82,6 +82,7 @@
             <Word>friend</Word>
             <Word>inline</Word>
             <Word>constexpr</Word>
+            <Word>default</Word>
         </Keywords>
 
         <Keywords color="Pointer">
@@ -118,6 +119,8 @@
         <Rule color="Function">[A-Za-z_][A-Za-z0-9_]*\s*(?=\()</Rule>
 
         <Rule color="Brace">[\[\]\{\}]</Rule>
+
+        <Rule color="Comment">(\/\/.*|\/\*[\s\S]*?\*\/)</Rule>
 
         <!-- Template Functions -->
         <Rule color="Function">\b[A-Za-z_][A-Za-z0-9_]*\b(?=&lt;)</Rule>
