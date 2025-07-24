@@ -73,7 +73,8 @@ namespace FModel.Settings
             CompressionFormat = Default.CompressionFormat,
             Platform = Default.CurrentDir.TexturePlatform,
             ExportMorphTargets = Default.SaveMorphTargets,
-            ExportMaterials = Default.SaveEmbeddedMaterials
+            ExportMaterials = Default.SaveEmbeddedMaterials,
+            ExportHdrTexturesAsHdr = Default.SaveHdrTexturesAsHdr
         };
 
         private bool _showChangelog = true;
@@ -446,6 +447,13 @@ namespace FModel.Settings
             set => SetProperty(ref _cameraMode, value);
         }
 
+        private int _wwiseMaxBnkPrefetch;
+        public int WwiseMaxBnkPrefetch
+        {
+            get => _wwiseMaxBnkPrefetch;
+            set => SetProperty(ref _wwiseMaxBnkPrefetch, value);
+        }
+
         private int _previewMaxTextureSize = 1024;
         public int PreviewMaxTextureSize
         {
@@ -507,6 +515,13 @@ namespace FModel.Settings
         {
             get => _saveSkeletonAsMesh;
             set => SetProperty(ref _saveSkeletonAsMesh, value);
+        }
+
+        private bool _saveHdrTexturesAsHdr = true;
+        public bool SaveHdrTexturesAsHdr
+        {
+            get => _saveHdrTexturesAsHdr;
+            set => SetProperty(ref _saveHdrTexturesAsHdr, value);
         }
     }
 }

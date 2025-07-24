@@ -31,6 +31,7 @@ using CUE4Parse.UE4.Localization;
 using CUE4Parse.UE4.Objects.Core.Serialization;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Oodle.Objects;
+using CUE4Parse.UE4.Pak;
 using CUE4Parse.UE4.Readers;
 using CUE4Parse.UE4.Shaders;
 using CUE4Parse.UE4.Versions;
@@ -38,7 +39,9 @@ using CUE4Parse.UE4.Wwise;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
 using CUE4Parse.FileProvider.Objects;
+using CUE4Parse.GameTypes.AshEchoes.FileProvider;
 using CUE4Parse.UE4.Assets;
+using CUE4Parse.UE4.BinaryConfig;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.Utils;
 using EpicManifestParser;
@@ -86,6 +89,13 @@ public class CUE4ParseViewModel : ViewModel
         set => SetProperty(ref _modelIsOverwritingMaterial, value);
     }
 
+    private bool _modelIsWaitingAnimation;
+    public bool ModelIsWaitingAnimation
+    {
+        get => _modelIsWaitingAnimation;
+        set => SetProperty(ref _modelIsWaitingAnimation, value);
+    }
+
     public bool IsSnooperOpen => _snooper is { Exists: true, IsVisible: true };
     private Snooper _snooper;
 
@@ -126,6 +136,8 @@ public class CUE4ParseViewModel : ViewModel
     public SearchViewModel SearchVm { get; }
     public TabControlViewModel TabControl { get; }
     public ConfigIni IoStoreOnDemand { get; }
+    private Lazy<WwiseProvider> _wwiseProviderLazy;
+    public WwiseProvider WwiseProvider => _wwiseProviderLazy.Value;
 
     public CUE4ParseViewModel()
     {
@@ -164,6 +176,7 @@ public class CUE4ParseViewModel : ViewModel
                     [
                         new(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) + "\\KONAMI\\eFootball\\ST\\Download")
                     ], SearchOption.AllDirectories, versionContainer, pathComparer),
+                    _ when versionContainer.Game is EGame.GAME_AshEchoes => new AEDefaultFileProvider(gameDirectory, SearchOption.AllDirectories, versionContainer, pathComparer),
                     _ => new DefaultFileProvider(gameDirectory, SearchOption.AllDirectories, versionContainer, pathComparer)
                 };
 
@@ -275,6 +288,7 @@ public class CUE4ParseViewModel : ViewModel
             }
 
             Provider.Initialize();
+            _wwiseProviderLazy = new Lazy<WwiseProvider>(() => new WwiseProvider(Provider, UserSettings.Default.WwiseMaxBnkPrefetch));
             Log.Information($"{Provider.Versions.Game} ({Provider.Versions.Platform}) | Archives: x{Provider.UnloadedVfs.Count} | AES: x{Provider.RequiredKeys.Count} | Loose Files: x{Provider.Files.Count}");
         });
     }
@@ -594,6 +608,16 @@ public class CUE4ParseViewModel : ViewModel
 
                 break;
             }
+            case "ini" when entry.Name.Contains("BinaryConfig"):
+            {
+                var ar = entry.CreateReader();
+                var configCache = new FConfigCacheIni(ar);
+
+                TabControl.SelectedTab.Highlighter = AvalonExtensions.HighlighterSelector("json");
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(configCache, Formatting.Indented), saveProperties, updateUi);
+
+                break;
+            }
             case "upluginmanifest":
             case "code-workspace":
             case "projectstore":
@@ -606,6 +630,7 @@ public class CUE4ParseViewModel : ViewModel
             case "gitignore":
             case "LICENSE":
             case "template":
+            case "stUMeta": // LIS: Double Exposure
             case "vmodule":
             case "glslfx":
             case "cptake":
@@ -691,9 +716,11 @@ public class CUE4ParseViewModel : ViewModel
                 var archive = entry.CreateReader();
                 var wwise = new WwiseReader(archive);
                 TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(wwise, Formatting.Indented), saveProperties, updateUi);
-                foreach (var (name, data) in wwise.WwiseEncodedMedias)
+
+                var medias = WwiseProvider.ExtractBankSounds(wwise);
+                foreach (var media in medias)
                 {
-                    SaveAndPlaySound(entry.Path.SubstringBeforeWithLast('/') + name, "WEM", data);
+                    SaveAndPlaySound(media.OutputPath, media.Extension, media.Data);
                 }
 
                 break;
@@ -772,6 +799,8 @@ public class CUE4ParseViewModel : ViewModel
                 break;
             }
             case "res": // just skip
+            case "luac": // compiled lua
+            case "bytes": // wuthering waves
                 break;
             default:
             {
@@ -878,22 +907,12 @@ public class CUE4ParseViewModel : ViewModel
                 TabControl.SelectedTab.AddImage(sourceFile.SubstringAfterLast('/'), false, bitmap, false, updateUi);
                 return false;
             }
-            case UAkAudioEvent when isNone && pointer.Object.Value is UAkAudioEvent { EventCookedData: { } wwiseData }:
+            case UAkAudioEvent when isNone && pointer.Object.Value is UAkAudioEvent audioEvent:
             {
-                foreach (var kvp in wwiseData.EventLanguageMap)
+                var extractedSounds = WwiseProvider.ExtractAudioEventSounds(audioEvent);
+                foreach (var sound in extractedSounds)
                 {
-                    if (!kvp.Value.HasValue) continue;
-
-                    foreach (var media in kvp.Value.Value.Media)
-                    {
-                        if (!Provider.TrySaveAsset(Path.Combine("Game/WwiseAudio/", media.MediaPathName.Text), out var data)) continue;
-
-                        var namedPath = string.Concat(
-                            Provider.ProjectName, "/Content/WwiseAudio/",
-                            media.DebugName.Text.SubstringBeforeLast('.').Replace('\\', '/'),
-                            " (", kvp.Key.LanguageName.Text, ")");
-                        SaveAndPlaySound(namedPath, media.MediaPathName.Text.SubstringAfterLast('.'), data);
-                    }
+                    SaveAndPlaySound(sound.OutputPath, sound.Extension, sound.Data);
                 }
                 return false;
             }
@@ -940,7 +959,7 @@ public class CUE4ParseViewModel : ViewModel
                 SnooperViewer.Run();
                 return true;
             }
-            case UAnimSequenceBase when isNone && UserSettings.Default.PreviewAnimations || SnooperViewer.Renderer.Options.ModelIsWaitingAnimation:
+            case UAnimSequenceBase when isNone && UserSettings.Default.PreviewAnimations || ModelIsWaitingAnimation:
             {
                 // animate all animations using their specified skeleton or when we explicitly asked for a loaded model to be animated (ignoring whether we wanted to preview animations)
                 SnooperViewer.Renderer.Animate(pointer.Object.Value);

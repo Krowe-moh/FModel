@@ -232,6 +232,11 @@
                     <TextBlock Grid.Row="18" Grid.Column="0" Text="Show Blueprint Decompile" VerticalAlignment="Center" Margin="0 0 0 5" ToolTip="Shows Decompiled Blueprints in a cpp format" />
                     <CheckBox Grid.Row="18" Grid.Column="2" Content="{Binding IsChecked, RelativeSource={RelativeSource Self}, Converter={x:Static converters:BoolToToggleConverter.Instance}}"
                               IsChecked="{Binding ShowDecompileOption, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" Margin="0 5 0 10"/>
+
+                    <TextBlock Grid.Row="18" Grid.Column="0" Text="Max Wwise Bank (.BNK) Prefetch" VerticalAlignment="Center" Margin="0 0 0 5" />
+                    <Slider Grid.Row="18" Grid.Column="2" Grid.ColumnSpan="5" TickPlacement="None" Minimum="0" Maximum="512" Ticks="0,2,4,8,16,32,64,128,256,512"
+                            AutoToolTipPlacement="BottomRight" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True" Margin="0 5 0 5"
+                            Value="{Binding WwiseMaxBnkPrefetch, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}"/>
                 </Grid>
             </DataTemplate>
             <DataTemplate x:Key="CreatorTemplate">
@@ -302,6 +307,7 @@
             <DataTemplate x:Key="ModelsTemplate">
                 <Grid adonisExtensions:LayerExtension.Layer="2">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -494,6 +500,11 @@
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
+
+                    <TextBlock Grid.Row="20" Grid.Column="0" Text="Save HDR Textures as Radiance .hdr" VerticalAlignment="Center" />
+                    <CheckBox Grid.Row="20" Grid.Column="2" Grid.ColumnSpan="3" Content="{Binding IsChecked, RelativeSource={RelativeSource Self}, Converter={x:Static converters:BoolToToggleConverter.Instance}}"
+                              IsChecked="{Binding SaveHdrTexturesAsHdr, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}"
+                              Style="{DynamicResource {x:Static adonisUi:Styles.ToggleSwitch}}" Margin="0 5 0 5"/>
                 </Grid>
             </DataTemplate>
             <DataTemplate x:Key="KeybindingsTemplate">
