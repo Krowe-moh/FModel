@@ -92,7 +92,7 @@ public class SearchViewModel : ViewModel
 
     public void RefreshFilter()
     {
-        if (SearchResultsView.Filter == null)
+        if (!string.IsNullOrEmpty(FilterText))
             SearchResultsView.Filter = e => ItemFilter(e, FilterText.Trim().Split(' '));
         else
             SearchResultsView.Refresh();
