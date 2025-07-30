@@ -665,6 +665,7 @@ public class CUE4ParseViewModel : ViewModel
             case "udn":
             case "doc":
             case "lua":
+            case "vdf":
             case "js":
             case "po":
             case "md":
@@ -791,6 +792,14 @@ public class CUE4ParseViewModel : ViewModel
                 break;
             }
             case "upipelinecache":
+            {
+                var archive = entry.CreateReader();
+                var ar = new FPipelineCacheFile(archive);
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(ar, Formatting.Indented), saveProperties, updateUi);
+
+                break;
+            }
+            case "stinfo":
             {
                 var archive = entry.CreateReader();
                 var ar = new FPipelineCacheFile(archive);
@@ -1014,16 +1023,14 @@ public class CUE4ParseViewModel : ViewModel
 
         var pkg = Provider.LoadPackage(entry);
 
-        string mypathisapathrealwhathowPath = Path.Combine(
-            Path.GetDirectoryName(entry.Path)!,
-            $"{Path.GetFileNameWithoutExtension(entry.Path)}.o.uasset"
-        );
+        string editorPath = Path.Combine(Path.GetDirectoryName(entry.Path)!, $"{Path.GetFileNameWithoutExtension(entry.Path)}.o.uasset");
 
-        string idkhowtogetitwithoutthis = string.Empty;
+        UObject meta = null;
         try
         {
-            var whatisthisforealreal = Provider.GetLoadPackageResult(mypathisapathrealwhathowPath);
-            idkhowtogetitwithoutthis = JsonConvert.SerializeObject(whatisthisforealreal.GetDisplayData(false), Formatting.Indented);
+            Provider.TryGetGameFile(editorPath, out var metaGame);
+            var editorPkg = Provider.LoadPackage(metaGame);
+            meta = editorPkg.GetExport("CookedClassMetaData", StringComparison.InvariantCultureIgnoreCase);
         }
         catch (Exception e) {}
 
@@ -1039,7 +1046,7 @@ public class CUE4ParseViewModel : ViewModel
             if (dummy is not UClass || pointer.Object.Value is not UClass blueprint)
                 continue;
 
-            cpp += blueprint.DecompileBlueprintToPseudo(idkhowtogetitwithoutthis);
+            cpp += blueprint.DecompileBlueprintToPseudo(meta);
         }
 
         TabControl.SelectedTab.SetDocumentText(cpp, false, false);

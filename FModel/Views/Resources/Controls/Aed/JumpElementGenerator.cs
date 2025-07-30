@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using FModel.Extensions;
 using ICSharpCode.AvalonEdit.Rendering;
 
 namespace FModel.Views.Resources.Controls;
@@ -7,7 +6,7 @@ namespace FModel.Views.Resources.Controls;
 public class JumpElementGenerator : VisualLineElementGenerator
 {
     private readonly Regex _JumpRegex = new(
-        @"\b(?:goto\s+Label_(?'target'\d+);|ExecuteUbergraph_(?'target'\d+)\(10\);)",
+        @"\b(?:goto\s+Label_(?'target'\d+);)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private Match FindMatch(int startOffset)

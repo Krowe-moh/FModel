@@ -61,7 +61,7 @@ public class JumpVisualLineText : VisualLineText
         var a = new JumpVisualLineText(_jump, ParentVisualLine, length);
         a.OnJumpClicked += jump =>
         {
-            var lineNumber = a.ParentVisualLine.Document.Text.GetNameLineNumberText($"\t\tLabel_{jump}:");
+            var lineNumber = a.ParentVisualLine.Document.Text.GetNameLineNumberText($"        Label_{jump}:"); // impossible for different indentation
             if (lineNumber > -1)
             {
                 var line = a.ParentVisualLine.Document.GetLineByNumber(lineNumber);
