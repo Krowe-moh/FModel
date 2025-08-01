@@ -1036,7 +1036,7 @@ public class CUE4ParseViewModel : ViewModel
         catch (Exception e) {}
 
 
-        var cpp = string.Empty;
+        var cppList = new List<string>();
         for (var i = 0; i < pkg.ExportMapLength; i++)
         {
             var pointer = new FPackageIndex(pkg, i + 1).ResolvedObject;
@@ -1047,7 +1047,16 @@ public class CUE4ParseViewModel : ViewModel
             if (dummy is not UClass || pointer.Object.Value is not UClass blueprint)
                 continue;
 
-            cpp += blueprint.DecompileBlueprintToPseudo(meta);
+            cppList.Add(blueprint.DecompileBlueprintToPseudo(meta));
+        }
+
+        var cpp = cppList.Count > 1
+            ? string.Join("\n\n", cppList)
+            : cppList.FirstOrDefault() ?? string.Empty;
+
+        if (entry.Path.Contains("_Verse.uasset"))
+        {
+            cpp = Regex.Replace(cpp, "__verse_0x[a-fA-F0-9]{8}_", ""); // UnmangleCasedName
         }
 
         TabControl.SelectedTab.SetDocumentText(cpp, false, false);
