@@ -803,7 +803,7 @@ public class CUE4ParseViewModel : ViewModel
             case "stinfo":
             {
                 var archive = entry.CreateReader();
-                var ar = new FPipelineCacheFile(archive);
+                var ar = new FShaderTypeHashes(archive);
                 TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(ar, Formatting.Indented), saveProperties, updateUi);
 
                 break;
