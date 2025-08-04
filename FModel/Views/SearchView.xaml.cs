@@ -29,6 +29,11 @@ public partial class SearchView
         _applicationView.CUE4Parse.SearchVm.RefreshFilter();
     }
 
+    private void OnSortClick(object sender, RoutedEventArgs e)
+    {
+        _applicationView.CUE4Parse.SearchVm.CycleSortSizeMode();
+    }
+
     private async void OnAssetDoubleClick(object sender, RoutedEventArgs e)
     {
         if (SearchListView.SelectedItem is not GameFile entry)
@@ -38,14 +43,14 @@ public partial class SearchView
         MainWindow.YesWeCats.AssetsListName.ItemsSource = null;
         var folder = _applicationView.CustomDirectories.GoToCommand.JumpTo(entry.Directory);
         if (folder == null) return;
-        
+
         MainWindow.YesWeCats.Activate();
 
         do { await Task.Delay(100); } while (MainWindow.YesWeCats.AssetsListName.Items.Count < folder.AssetsList.Assets.Count);
 
         while (!folder.IsSelected || MainWindow.YesWeCats.AssetsFolderName.SelectedItem != folder)
             await Task.Delay(50); // stops assets tab from opening too early
-        
+
         MainWindow.YesWeCats.LeftTabControl.SelectedIndex = 2; // assets tab
         do
         {

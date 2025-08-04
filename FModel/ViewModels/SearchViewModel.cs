@@ -4,28 +4,10 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Data;
-using System.Windows.Input;
 using CUE4Parse.FileProvider.Objects;
 using FModel.Framework;
 
 namespace FModel.ViewModels;
-
-public class RelayCommand : ICommand
-{
-    private readonly Action _execute;
-    private readonly Func<bool>? _canExecute;
-
-    public event EventHandler? CanExecuteChanged;
-
-    public RelayCommand(Action execute, Func<bool>? canExecute = null)
-    {
-        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-        _canExecute = canExecute;
-    }
-    public bool CanExecute(object? parameter) => _canExecute?.Invoke() ?? true;
-    public void Execute(object? parameter) => _execute();
-        
-}
 
 public class SearchViewModel : ViewModel
 {
@@ -64,22 +46,6 @@ public class SearchViewModel : ViewModel
         set => SetProperty(ref _currentSortSizeMode, value);
     }
 
-    public void CycleSortSizeMode()
-    {
-        CurrentSortSizeMode = CurrentSortSizeMode switch
-        {
-            ESortSizeMode.None => ESortSizeMode.Ascending,
-            ESortSizeMode.Ascending => ESortSizeMode.Descending,
-            ESortSizeMode.Descending => ESortSizeMode.None,
-            _ => ESortSizeMode.None
-        };
-        
-        RefreshFilter();
-    }
-    
-    private RelayCommand? _sortSizeModeCommand;
-    public ICommand SortSizeModeCommand => _sortSizeModeCommand ??= new RelayCommand(CycleSortSizeMode);
-
     public int ResultsCount => SearchResults?.Count ?? 0;
     public RangeObservableCollection<GameFile> SearchResults { get; }
     public ICollectionView SearchResultsView { get; }
@@ -87,23 +53,38 @@ public class SearchViewModel : ViewModel
     public SearchViewModel()
     {
         SearchResults = new RangeObservableCollection<GameFile>();
-        SearchResultsView = new ListCollectionView(SearchResults);
+        SearchResultsView = new ListCollectionView(SearchResults)
+        {
+            Filter = e => ItemFilter(e, FilterText?.Trim().Split(' ') ?? []),
+        };
     }
 
     public void RefreshFilter()
     {
-        if (!string.IsNullOrEmpty(FilterText))
-            SearchResultsView.Filter = e => ItemFilter(e, FilterText.Trim().Split(' '));
-        else
-            SearchResultsView.Refresh();
+        SearchResultsView.Refresh();
+    }
 
-        SearchResultsView.SortDescriptions.Clear();
+    public void CycleSortSizeMode()
+    {
+        CurrentSortSizeMode = CurrentSortSizeMode switch
+        {
+            ESortSizeMode.None => ESortSizeMode.Descending,
+            ESortSizeMode.Descending => ESortSizeMode.Ascending,
+            _ => ESortSizeMode.None
+        };
 
-        if (CurrentSortSizeMode != ESortSizeMode.None)
-            SearchResultsView.SortDescriptions.Add(new SortDescription(nameof(GameFile.Size),
-                CurrentSortSizeMode == ESortSizeMode.Ascending
+        using (SearchResultsView.DeferRefresh())
+        {
+            SearchResultsView.SortDescriptions.Clear();
+            if (CurrentSortSizeMode != ESortSizeMode.None)
+            {
+                var sort = CurrentSortSizeMode == ESortSizeMode.Ascending
                     ? ListSortDirection.Ascending
-                    : ListSortDirection.Descending));
+                    : ListSortDirection.Descending;
+
+                SearchResultsView.SortDescriptions.Add(new SortDescription(nameof(GameFile.Size), sort));
+            }
+        }
     }
 
     private bool ItemFilter(object item, IEnumerable<string> filters)

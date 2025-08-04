@@ -58,14 +58,6 @@
                         </TextBox.Style>
                     </TextBox>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                        <Button ToolTip="Sort File Sizes" Padding="5" Command="{Binding CUE4Parse.SearchVm.SortSizeModeCommand}" Style="{DynamicResource {x:Static adonisUi:Styles.ToolbarButton}}">
-                            <Viewbox Width="16" Height="16" HorizontalAlignment="Center">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource {x:Static adonisUi:Brushes.ForegroundBrush}}" Data="{StaticResource SortIcon}" />
-                                </Canvas>
-                            </Viewbox>
-                        </Button>
-
                         <ToggleButton ToolTip="Match Case" Padding="5" IsChecked="{Binding CUE4Parse.SearchVm.HasMatchCaseEnabled}" Style="{DynamicResource {x:Static adonisUi:Styles.ToolbarToggleButton}}">
                             <Viewbox Width="16" Height="16" HorizontalAlignment="Center">
                                 <Canvas Width="24" Height="24">
@@ -80,6 +72,13 @@
                                 </Canvas>
                             </Viewbox>
                         </ToggleButton>
+                        <Button ToolTip="Sort File Sizes" Padding="5" Style="{DynamicResource {x:Static adonisUi:Styles.ToolbarButton}}" Click="OnSortClick">
+                            <Viewbox Width="16" Height="16" HorizontalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource {x:Static adonisUi:Brushes.ForegroundBrush}}" Data="{StaticResource SortIcon}" />
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
                         <Button ToolTip="Clear Search Filter" Padding="5" Style="{DynamicResource {x:Static adonisUi:Styles.ToolbarButton}}" Click="OnDeleteSearchClick">
                             <Viewbox Width="16" Height="16" HorizontalAlignment="Center">
                                 <Canvas Width="24" Height="24">
@@ -88,8 +87,14 @@
                             </Viewbox>
                         </Button>
                     </StackPanel>
-                    <TextBlock Grid.Column="2" Text="{Binding CUE4Parse.SearchVm.ResultsCount, FallbackValue=0, StringFormat={}{0:### ### ###} Loaded Packages}"
-                               VerticalAlignment="Center" HorizontalAlignment="Right" FontStyle="Italic"/>
+                    <TextBlock Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10 0 0 0" FontStyle="Italic">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0:### ### ###} Loaded Packages ({1})">
+                                <Binding Path="CUE4Parse.SearchVm.ResultsCount" FallbackValue="0" />
+                                <Binding Path="CUE4Parse.SearchVm.CurrentSortSizeMode" FallbackValue="None" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
                 </Grid>
 
                 <ListView Grid.Row="1" x:Name="SearchListView" VirtualizingPanel.IsVirtualizing="True" ItemsSource="{Binding CUE4Parse.SearchVm.SearchResultsView, IsAsync=True}">

@@ -31,7 +31,6 @@ using CUE4Parse.UE4.Localization;
 using CUE4Parse.UE4.Objects.Core.Serialization;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Oodle.Objects;
-using CUE4Parse.UE4.Pak;
 using CUE4Parse.UE4.Readers;
 using CUE4Parse.UE4.Shaders;
 using CUE4Parse.UE4.Versions;
@@ -63,12 +62,7 @@ using SkiaSharp;
 using UE4Config.Parsing;
 using Application = System.Windows.Application;
 using FGuid = CUE4Parse.UE4.Objects.Core.Misc.FGuid;
-using CUE4Parse.UE4.Assets.Objects;
-using CUE4Parse.UE4.Kismet;
-using CUE4Parse.UE4.Objects.Core.Math;
-using CUE4Parse.UE4.Objects.GameplayTags;
-using System.Text;
-using AssetRipper.TextureDecoder.Rgb;
+using CUE4Parse.UE4.Objects.UObject.Editor;
 
 
 namespace FModel.ViewModels;
@@ -77,12 +71,10 @@ public class CUE4ParseViewModel : ViewModel
 {
     private ThreadWorkerViewModel _threadWorkerView => ApplicationService.ThreadWorkerView;
     private ApiEndpointViewModel _apiEndpointView => ApplicationService.ApiEndpointView;
-
     private readonly Regex _fnLiveRegex = new(@"^FortniteGame[/\\]Content[/\\]Paks[/\\]",
         RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private bool _modelIsOverwritingMaterial;
-
     public bool ModelIsOverwritingMaterial
     {
         get => _modelIsOverwritingMaterial;
@@ -98,7 +90,6 @@ public class CUE4ParseViewModel : ViewModel
 
     public bool IsSnooperOpen => _snooper is { Exists: true, IsVisible: true };
     private Snooper _snooper;
-
     public Snooper SnooperViewer
     {
         get
@@ -501,7 +492,6 @@ public class CUE4ParseViewModel : ViewModel
     }
 
     private int _virtualPathCount { get; set; }
-
     public Task LoadVirtualPaths()
     {
         if (_virtualPathCount > 0) return Task.CompletedTask;
@@ -1022,21 +1012,19 @@ public class CUE4ParseViewModel : ViewModel
         TabControl.SelectedTab.TitleExtra = "Decompiled";
         TabControl.SelectedTab.Highlighter = AvalonExtensions.HighlighterSelector("cpp");
 
-        var pkg = Provider.LoadPackage(entry);
-
-        string editorPath = Path.Combine(Path.GetDirectoryName(entry.Path)!, $"{Path.GetFileNameWithoutExtension(entry.Path)}.o.uasset");
-
-        UObject meta = null;
+        UClassCookedMetaData cookedMetaData = null;
         try
         {
-            Provider.TryGetGameFile(editorPath, out var metaGame);
-            var editorPkg = Provider.LoadPackage(metaGame);
-            meta = editorPkg.GetExport("CookedClassMetaData", StringComparison.InvariantCultureIgnoreCase);
+            var editorPkg = Provider.LoadPackage(entry.Path.Replace(".uasset", ".o.uasset"));
+            cookedMetaData = editorPkg.GetExport<UClassCookedMetaData>("CookedClassMetaData");
         }
-        catch (Exception e) {}
-
+        catch
+        {
+            // ignored
+        }
 
         var cppList = new List<string>();
+        var pkg = Provider.LoadPackage(entry);
         for (var i = 0; i < pkg.ExportMapLength; i++)
         {
             var pointer = new FPackageIndex(pkg, i + 1).ResolvedObject;
@@ -1047,13 +1035,10 @@ public class CUE4ParseViewModel : ViewModel
             if (dummy is not UClass || pointer.Object.Value is not UClass blueprint)
                 continue;
 
-            cppList.Add(blueprint.DecompileBlueprintToPseudo(meta));
+            cppList.Add(blueprint.DecompileBlueprintToPseudo(cookedMetaData));
         }
 
-        var cpp = cppList.Count > 1
-            ? string.Join("\n\n", cppList)
-            : cppList.FirstOrDefault() ?? string.Empty;
-
+        var cpp = cppList.Count > 1 ? string.Join("\n\n", cppList) : cppList.FirstOrDefault() ?? string.Empty;
         if (entry.Path.Contains("_Verse.uasset"))
         {
             cpp = Regex.Replace(cpp, "__verse_0x[a-fA-F0-9]{8}_", ""); // UnmangleCasedName
