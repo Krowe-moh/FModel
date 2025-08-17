@@ -97,7 +97,11 @@
                     </TextBlock>
                 </Grid>
 
-                <ListView Grid.Row="1" x:Name="SearchListView" VirtualizingPanel.IsVirtualizing="True" ItemsSource="{Binding CUE4Parse.SearchVm.SearchResultsView, IsAsync=True}">
+                <ListView Grid.Row="1" x:Name="SearchListView"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling"
+                          ScrollViewer.CanContentScroll="True"
+                          ItemsSource="{Binding CUE4Parse.SearchVm.SearchResultsView, IsAsync=True}">
                     <ListView.Resources>
                         <Style TargetType="{x:Type ListViewItem}" BasedOn="{StaticResource {x:Type ListViewItem}}">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />

@@ -29,9 +29,9 @@ public partial class SearchView
         _applicationView.CUE4Parse.SearchVm.RefreshFilter();
     }
 
-    private void OnSortClick(object sender, RoutedEventArgs e)
+    private async void OnSortClick(object sender, RoutedEventArgs e)
     {
-        _applicationView.CUE4Parse.SearchVm.CycleSortSizeMode();
+        await _applicationView.CUE4Parse.SearchVm.CycleSortSizeMode();
     }
 
     private async void OnAssetDoubleClick(object sender, RoutedEventArgs e)

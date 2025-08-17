@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Data;
 using CUE4Parse.FileProvider.Objects;
+using CUE4Parse.UE4.VirtualFileSystem;
 using FModel.Framework;
 
 namespace FModel.ViewModels;
@@ -64,7 +66,7 @@ public class SearchViewModel : ViewModel
         SearchResultsView.Refresh();
     }
 
-    public void CycleSortSizeMode()
+    public async Task CycleSortSizeMode()
     {
         CurrentSortSizeMode = CurrentSortSizeMode switch
         {
@@ -73,18 +75,37 @@ public class SearchViewModel : ViewModel
             _ => ESortSizeMode.None
         };
 
-        using (SearchResultsView.DeferRefresh())
+        var sorted = await Task.Run(() =>
         {
-            SearchResultsView.SortDescriptions.Clear();
-            if (CurrentSortSizeMode != ESortSizeMode.None)
-            {
-                var sort = CurrentSortSizeMode == ESortSizeMode.Ascending
-                    ? ListSortDirection.Ascending
-                    : ListSortDirection.Descending;
+            var archiveDict = SearchResults
+                .OfType<VfsEntry>()
+                .Select(f => f.Vfs.Name)
+                .Distinct()
+                .Select((name, idx) => (name, idx))
+                .ToDictionary(x => x.name, x => x.idx);
 
-                SearchResultsView.SortDescriptions.Add(new SortDescription(nameof(GameFile.Size), sort));
-            }
-        }
+            var keyed = SearchResults.Select(f =>
+            {
+                int archiveKey = f is VfsEntry ve && archiveDict.TryGetValue(ve.Vfs.Name, out var key) ? key : -1;
+                return (File: f, f.Size, ArchiveKey: archiveKey);
+            });
+
+            return CurrentSortSizeMode switch
+            {
+                ESortSizeMode.Ascending => keyed
+                    .OrderBy(x => x.Size).ThenBy(x => x.ArchiveKey)
+                    .Select(x => x.File).ToList(),
+                ESortSizeMode.Descending => keyed
+                    .OrderByDescending(x => x.Size).ThenBy(x => x.ArchiveKey)
+                    .Select(x => x.File).ToList(),
+                _ => keyed
+                    .OrderBy(x => x.ArchiveKey).ThenBy(x => x.File.Path, StringComparer.OrdinalIgnoreCase)
+                    .Select(x => x.File).ToList()
+            };
+        });
+
+        SearchResults.Clear();
+        SearchResults.AddRange(sorted.ToList());
     }
 
     private bool ItemFilter(object item, IEnumerable<string> filters)
