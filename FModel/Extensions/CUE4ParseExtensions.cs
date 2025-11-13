@@ -17,8 +17,8 @@ public static class CUE4ParseExtensions
         // fix would be to use InclusiveStart and ExclusiveEnd to determine the page the export index is in
         // giving the document access to this would fix the issue and we could re-use Package instead of reloading it but it's quite a bit of work atm
 
-        private const int PaginationThreshold = 5000;
-        private const int MaxExportPerPage = 1;
+        private const int PaginationThreshold = 500000000;
+        private const int MaxExportPerPage = 500000000;
 
         public IPackage Package;
         public int RequestedIndex;

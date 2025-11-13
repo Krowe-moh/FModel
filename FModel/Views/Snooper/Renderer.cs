@@ -6,6 +6,7 @@ using System.Threading;
 using System.Windows;
 using CUE4Parse_Conversion.Animations;
 using CUE4Parse_Conversion.Meshes;
+using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.SplineMesh;
@@ -451,12 +452,11 @@ public class Renderer : IDisposable
             Services.ApplicationService.ApplicationView.Status.UpdateStatusLabel($"{original.Name} ... {i}/{length}");
             WorldCamera(actor);
             WorldLight(actor);
-            WorldMesh(actor, transform);
+            WorldMesh(actor, transform, true);
             AdditionalWorlds(actor, transform.Matrix, cancellationToken);
         }
         Services.ApplicationService.ApplicationView.Status.UpdateStatusLabel($"{original.Name} ... {length}/{length}");
     }
-
     private void LoadJunoWorld(CancellationToken cancellationToken, UBlueprintGeneratedClass original, Transform transform)
     {
         CameraOp.Setup(new FBox(FVector.ZeroVector, new FVector(0, 10, 10)));
@@ -558,6 +558,16 @@ public class Renderer : IDisposable
                 else ProcessMesh(actor, staticMeshComp, m, relation);
             }
         }
+        else if (actor.TryGetValue(out FPackageIndex[] staticMeshComponents, "StaticMeshComponents"))
+        {
+            foreach (var component in staticMeshComponents)
+            {
+                if (!component.TryLoad(out UStaticMeshComponent staticMeshComp) || !staticMeshComp.GetStaticMesh().TryLoad(out UStaticMesh m))
+                    continue;
+                var relation = CalculateTransform(staticMeshComp, transform);
+                ProcessMesh(actor, staticMeshComp, m, relation, forceShow);
+            }
+        }
         else if (actor.TryGetValue(out FPackageIndex componentTemplate, "ComponentTemplate") &&
                  componentTemplate.TryLoad(out UObject compTemplate))
         {
@@ -575,11 +585,11 @@ public class Renderer : IDisposable
                 ProcessMesh(actor, compTemplate, m, CalculateTransform(compTemplate, transform), forceShow);
             }
         }
-        else if (actor.TryGetValue(out FPackageIndex staticMeshComponent, "StaticMeshComponent", "ComponentTemplate", "StaticMesh", "Mesh", "LightMesh", "SplineMesh") &&
+        else if (actor.TryGetValue(out FPackageIndex staticMeshComponent, "StaticMeshComponent", "ComponentTemplate", "StaticMesh", "Mesh", "Base", "LightMesh", "SplineMesh") &&
                  staticMeshComponent.TryLoad(out UStaticMeshComponent staticMeshComp) &&
                  staticMeshComp.GetStaticMesh().TryLoad(out UStaticMesh m) && m.Materials.Length > 0)
         {
-            ProcessMesh(actor, staticMeshComp, m, CalculateTransform(staticMeshComp, transform));
+            ProcessMesh(actor, staticMeshComp, m, !staticMeshComp.GetOrDefault("RelativeLocation", staticMeshComp.GetOrDefault("Translation", staticMeshComp.GetOrDefault("Location", FVector.ZeroVector))).Equals(FVector.ZeroVector) ? CalculateTransform(staticMeshComp, transform) : CalculateTransform(actor, transform));
         }
     }
 
@@ -651,6 +661,18 @@ public class Renderer : IDisposable
                 }
             }
 
+            if (staticMeshComp.TryGetValue(out FPackageIndex[] materials, "Materials"))
+            {
+                for (var j = 0; j < materials.Length && j < model.Sections.Length; j++)
+                {
+                    var matIndex = model.Sections[j].MaterialIndex;
+                    if (matIndex < 0 || matIndex >= model.Materials.Length || matIndex >= materials.Length ||
+                        materials[matIndex].Load() is not UMaterialInterface unrealMaterial) continue;
+
+                    model.Materials[matIndex].SwapMaterial(unrealMaterial);
+                }
+            }
+
             if (forceShow)
             {
                 foreach (var section in model.Sections)
@@ -683,9 +705,9 @@ public class Renderer : IDisposable
         return new Transform
         {
             Relation = relation.Matrix,
-            Position = staticMeshComp.GetOrDefault("RelativeLocation", FVector.ZeroVector) * Constants.SCALE_DOWN_RATIO,
-            Rotation = staticMeshComp.GetOrDefault("RelativeRotation", FRotator.ZeroRotator).Quaternion(),
-            Scale = staticMeshComp.GetOrDefault("RelativeScale3D", FVector.OneVector)
+            Position = staticMeshComp.GetOrDefault("RelativeLocation", staticMeshComp.GetOrDefault("Translation", staticMeshComp.GetOrDefault("Location",FVector.ZeroVector))) * Constants.SCALE_DOWN_RATIO,
+            Rotation = staticMeshComp.GetOrDefault("RelativeRotation", staticMeshComp.GetOrDefault("Rotation", FRotator.ZeroRotator)).Quaternion(),
+            Scale = staticMeshComp.GetOrDefault("RelativeScale3D", staticMeshComp.GetOrDefault("Scale3D", staticMeshComp.GetOrDefault("DrawScale3D",FVector.OneVector)))
         };
     }
 

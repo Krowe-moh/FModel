@@ -11,12 +11,18 @@ using SkiaSharp;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using BCnEncoder.Decoder;
+using BCnEncoder.ImageSharp;
+using BCnEncoder.Shared.ImageFiles;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse_Conversion.Textures;
 using CUE4Parse.FileProvider.Objects;
 using CUE4Parse.Utils;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace FModel.ViewModels;
 
@@ -293,6 +299,37 @@ public class TabItem : ViewModel
     {
         var appendLayerNumber = false;
         var img = new CTexture[1];
+        if (texture.SourceArt?.Header.ElementCount > 0)
+        {
+            var data = texture.SourceArt.Data;
+
+            if (data.Length >= 8 && data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 && data[4] == 0x0D && data[5] == 0x0A && data[6] == 0x1A && data[7] == 0x0A)
+            {
+                using var ms = new MemoryStream(data);
+                using var skImage = SKImage.FromEncodedData(ms);
+                using var bitmap = SKBitmap.FromImage(skImage);
+                AddImage(texture.Name, texture.RenderNearestNeighbor, bitmap, save, updateUi);
+                return;
+            }
+
+            if (data.Length >= 4 && data[0] == 'D' && data[1] == 'D' && data[2] == 'S' && data[3] == ' ')
+            {
+                File.WriteAllBytes("a.bin", data);
+                using var ms = new MemoryStream(data);
+                var ddsFile = DdsFile.Load(ms);
+                var decoder = new BcDecoder();
+                using Image<Rgba32> image = decoder.DecodeToImageRgba32(ddsFile);
+
+                var info = new SKImageInfo(image.Width, image.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
+                var bitmap = new SKBitmap(info);
+                var pixelBytes = new byte[image.Width * image.Height * 4];
+                image.CopyPixelDataTo(pixelBytes);
+                Marshal.Copy(pixelBytes, 0, bitmap.GetPixels(), pixelBytes.Length);
+
+                AddImage(texture.Name, texture.RenderNearestNeighbor, bitmap, save, updateUi);
+                return;
+            }
+        }
         if (texture is UTexture2DArray textureArray)
         {
             img = textureArray.DecodeTextureArray(UserSettings.Default.CurrentDir.TexturePlatform);
@@ -301,9 +338,9 @@ public class TabItem : ViewModel
         else
         {
             img[0] = texture.Decode(UserSettings.Default.CurrentDir.TexturePlatform);
-            if (texture is UTextureCube)
+            if (texture is not null && texture is UTextureCube)
             {
-                img[0] = img[0].ToPanorama();
+                //img[0] = img[0].ToPanorama();
             }
         }
 
@@ -392,6 +429,8 @@ public class TabItem : ViewModel
 
     private void SaveImage(TabImage image, string path)
     {
+        if (image?.ImageBuffer == null || image.ImageBuffer.Length == 0) return;
+
         using var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read);
         fs.Write(image.ImageBuffer, 0, image.ImageBuffer.Length);
     }
@@ -412,7 +451,7 @@ public class TabItem : ViewModel
     {
         if (File.Exists(path))
         {
-            Log.Information("{FileName} successfully saved", fileName);
+            //Log.Information("{FileName} successfully saved", fileName);
             if (updateUi)
             {
                 FLogger.Append(ELog.Information, () =>

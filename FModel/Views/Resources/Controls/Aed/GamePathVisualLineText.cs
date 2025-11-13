@@ -7,7 +7,6 @@ using CUE4Parse.Utils;
 using FModel.Extensions;
 using FModel.Services;
 using FModel.ViewModels;
-using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Rendering;
 
 namespace FModel.Views.Resources.Controls;

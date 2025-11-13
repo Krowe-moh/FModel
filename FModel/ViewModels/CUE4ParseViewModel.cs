@@ -40,8 +40,11 @@ using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
 using CUE4Parse.FileProvider.Objects;
 using CUE4Parse.GameTypes.AshEchoes.FileProvider;
+using CUE4Parse.GameTypes.RL.Encryption.Aes;
 using CUE4Parse.UE4.Assets;
+using CUE4Parse.UE4.Assets.Exports.Sound.Node;
 using CUE4Parse.UE4.BinaryConfig;
+using CUE4Parse.UE4.Exceptions;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.Utils;
 using EpicManifestParser;
@@ -570,7 +573,7 @@ public class CUE4ParseViewModel : ViewModel
 
     public void Extract(CancellationToken cancellationToken, GameFile entry, bool addNewTab = false, EBulkType bulk = EBulkType.None)
     {
-        Log.Information("User DOUBLE-CLICKED to extract '{FullPath}'", entry.Path);
+        //Log.Information("User DOUBLE-CLICKED to extract '{FullPath}'", entry.Path);
 
         if (addNewTab && TabControl.CanAddTabs) TabControl.AddTab(entry);
         else TabControl.SelectedTab.SoftReset(entry);
@@ -582,23 +585,51 @@ public class CUE4ParseViewModel : ViewModel
         switch (entry.Extension)
         {
             case "uasset":
+            case "upk":
+            case "udk":
+            case "utx":
+            case "ukx":
+            case "uax":
+            case "ut2":
+            case "usx":
+            case "UPK":
+            case "mbamap":
+            case "rbd":
+            case "aa3":
+            case "ut3":
+            case "u":
             case "umap":
             {
-                var result = Provider.GetLoadPackageResult(entry);
-                TabControl.SelectedTab.TitleExtra = result.TabTitleExtra;
-
-                if (saveProperties || updateUi)
+                try
                 {
-                    TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(result.GetDisplayData(saveProperties), Formatting.Indented), saveProperties, updateUi);
-                    if (saveProperties) break; // do not search for viewable exports if we are dealing with jsons
-                }
+                    var result = Provider.GetLoadPackageResult(entry);
+                    TabControl.SelectedTab.TitleExtra = result.TabTitleExtra;
 
-                for (var i = result.InclusiveStart; i < result.ExclusiveEnd; i++)
+                    if (saveProperties || updateUi)
+                    {
+                        TabControl.SelectedTab.SetDocumentText(
+                            JsonConvert.SerializeObject(result.GetDisplayData(saveProperties), Formatting.Indented),
+                            saveProperties,
+                            updateUi);
+
+                        if (saveProperties)
+                            break;
+                    }
+
+                    for (var i = result.InclusiveStart; i < result.ExclusiveEnd; i++)
+                    {
+                        if (CheckExport(cancellationToken, result.Package, i, bulk))
+                            break;
+                    }
+                }
+                catch (InvalidAesKeyException ex)
                 {
-                    if (CheckExport(cancellationToken, result.Package, i, bulk))
-                        break;
+                    Log.Error(ex, $"Skipping {entry.Name} – no valid decryption key.");
                 }
-
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"Unhandled error while extracting {entry.Name}");
+                }
                 break;
             }
             case "ini" when entry.Name.Contains("BinaryConfig"):
@@ -708,8 +739,13 @@ public class CUE4ParseViewModel : ViewModel
             case "bin" when entry.Name.Contains("GlobalShaderCache", StringComparison.OrdinalIgnoreCase):
             {
                 var archive = entry.CreateReader();
-                var registry = new FGlobalShaderCache(archive);
-                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(registry, Formatting.Indented), saveProperties, updateUi);
+
+                {
+                    var registry = new FGlobalShaderCache(archive);
+                    TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(registry, Formatting.Indented), saveProperties, updateUi);
+                }
+
+                //  TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(registry, Formatting.Indented), saveProperties, updateUi);
 
                 break;
             }
@@ -739,6 +775,14 @@ public class CUE4ParseViewModel : ViewModel
             {
                 var data = Provider.SaveAsset(entry);
                 SaveAndPlaySound(entry.PathWithoutExtension, entry.Extension, data);
+
+                break;
+            }
+            case "ewem": // encrypted wem file, only rocket league has this iirc
+            {
+                var data = Provider.SaveAsset(entry);
+                RocketLeagueAes.Decrypt(data, 0, false, out byte[] decryptedData);
+                SaveAndPlaySound(entry.PathWithoutExtension, "wem", decryptedData);
 
                 break;
             }
@@ -902,7 +946,7 @@ public class CUE4ParseViewModel : ViewModel
                     fs.Write(data, 0, data.Length);
                     if (File.Exists(path))
                     {
-                        Log.Information("{FileName} successfully saved", fileName);
+                        //Log.Information("{FileName} successfully saved", fileName);
                         if (updateUi)
                         {
                             FLogger.Append(ELog.Information, () =>
@@ -933,6 +977,7 @@ public class CUE4ParseViewModel : ViewModel
                 return false;
             }
             case UAkMediaAssetData when isNone:
+            case USoundNodeWave when isNone:
             case USoundWave when isNone:
             {
                 var shouldDecompress = UserSettings.Default.CompressedAudioMode == ECompressedAudio.PlayDecompressed;
@@ -967,7 +1012,7 @@ public class CUE4ParseViewModel : ViewModel
             {
                 if (SnooperViewer.TryLoadExport(cancellationToken, dummy, pointer.Object))
                     SnooperViewer.Run();
-                return true;
+                return false; // let's try false real
             }
             case UMaterialInstance when isNone && ModelIsOverwritingMaterial && pointer.Object.Value is UMaterialInstance m:
             {
