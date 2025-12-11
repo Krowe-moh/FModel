@@ -136,10 +136,13 @@ public class StaticModel : UModel
         }
 
         Box = staticMesh.BoundingBox * Constants.SCALE_DOWN_RATIO;
-        for (int i = 0; i < export.Sockets.Length; i++)
+        if (export?.Sockets != null)
         {
-            if (export.Sockets[i].Load<UStaticMeshSocket>() is not { } socket) continue;
-            Sockets.Add(new Socket(socket));
+            for (int i = 0; i < export.Sockets.Length; i++)
+            {
+                if (export.Sockets[i].Load<UStaticMeshSocket>() is not { } socket) continue;
+                Sockets.Add(new Socket(socket));
+            }
         }
     }
 

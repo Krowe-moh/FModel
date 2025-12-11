@@ -11,12 +11,19 @@ using SkiaSharp;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using BCnEncoder.Decoder;
+using BCnEncoder.ImageSharp;
+using BCnEncoder.Shared.ImageFiles;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse_Conversion.Textures;
 using CUE4Parse.FileProvider.Objects;
+using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.Utils;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace FModel.ViewModels;
 
@@ -293,6 +300,39 @@ public class TabItem : ViewModel
     {
         var appendLayerNumber = false;
         var img = new CTexture[1];
+        if (texture.SourceArt?.Header.ElementCount > 0)
+        {
+            var data = texture.SourceArt.Data;
+
+            byte[] pngSignature = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+            byte[] ddsSignature = new byte[] { (byte)'D', (byte)'D', (byte)'S', (byte)' ' };
+            if (data.Length >= pngSignature.Length && data.AsSpan(0, pngSignature.Length).SequenceEqual(pngSignature))
+            {
+                using var ms = new MemoryStream(data);
+                using var skImage = SKImage.FromEncodedData(ms);
+                using var bitmap = SKBitmap.FromImage(skImage);
+                AddImage(texture.Name, texture.RenderNearestNeighbor, bitmap, save, updateUi);
+                return;
+            }
+
+            if (data.Length >= ddsSignature.Length && data.AsSpan(0, ddsSignature.Length).SequenceEqual(ddsSignature))
+            {
+                File.WriteAllBytes("a.bin", data);
+                using var ms = new MemoryStream(data);
+                var ddsFile = DdsFile.Load(ms);
+                var decoder = new BcDecoder();
+                using Image<Rgba32> image = decoder.DecodeToImageRgba32(ddsFile);
+
+                var info = new SKImageInfo(image.Width, image.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
+                var bitmap = new SKBitmap(info);
+                var pixelBytes = new byte[image.Width * image.Height * 4];
+                image.CopyPixelDataTo(pixelBytes);
+                Marshal.Copy(pixelBytes, 0, bitmap.GetPixels(), pixelBytes.Length);
+
+                AddImage(texture.Name, texture.RenderNearestNeighbor, bitmap, save, updateUi);
+                return;
+            }
+        }
         if (texture is UTexture2DArray textureArray)
         {
             img = textureArray.DecodeTextureArray(UserSettings.Default.CurrentDir.TexturePlatform);
@@ -301,9 +341,24 @@ public class TabItem : ViewModel
         else
         {
             img[0] = texture.Decode(UserSettings.Default.CurrentDir.TexturePlatform);
-            if (texture is UTextureCube)
+            if (texture is UTextureCube cube)
             {
-                img[0] = img[0].ToPanorama();
+                CTexture LoadFace(FPackageIndex face) =>
+                    face?.Load() is UTexture tex ? tex.Decode(UserSettings.Default.CurrentDir.TexturePlatform) : null;
+
+                var faces = new[]
+                {
+                    LoadFace(cube.FacePosX),
+                    LoadFace(cube.FaceNegX),
+                    LoadFace(cube.FacePosY),
+                    LoadFace(cube.FaceNegY),
+                    LoadFace(cube.FacePosZ),
+                    LoadFace(cube.FaceNegZ)
+                };
+
+                img[0] = faces.All(f => f != null)
+                    ? CubemapConverter.ToPanoramaFromFaces(faces[0], faces[1], faces[2], faces[3], faces[4], faces[5])
+                    : img[0].ToPanorama();
             }
         }
 

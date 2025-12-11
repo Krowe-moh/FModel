@@ -5,7 +5,6 @@ using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Math;
-using CUE4Parse.UE4.Objects.Core.Misc;
 using FModel.Extensions;
 using FModel.Settings;
 using FModel.Views.Snooper.Models;
