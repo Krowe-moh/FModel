@@ -12,15 +12,22 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using AdonisUI.Controls;
+using CUE4Parse;
 using CUE4Parse.Compression;
 using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
+using CUE4Parse.FileProvider.Objects;
 using CUE4Parse.FileProvider.Vfs;
+using CUE4Parse.GameTypes.Aion2.Objects;
+using CUE4Parse.GameTypes.AshEchoes.FileProvider;
 using CUE4Parse.GameTypes.KRD.Assets.Exports;
 using CUE4Parse.MappingsProvider;
 using CUE4Parse.UE4.AssetRegistry;
+using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Animation;
+using CUE4Parse.UE4.Assets.Exports.CriWare;
+using CUE4Parse.UE4.Assets.Exports.Fmod;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Sound;
@@ -28,15 +35,22 @@ using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Assets.Exports.Verse;
 using CUE4Parse.UE4.Assets.Exports.Wwise;
+using CUE4Parse.UE4.BinaryConfig;
+using CUE4Parse.UE4.CriWare;
+using CUE4Parse.UE4.CriWare.Readers;
+using CUE4Parse.UE4.FMod;
 using CUE4Parse.UE4.IO;
 using CUE4Parse.UE4.Localization;
 using CUE4Parse.UE4.Objects.Core.Serialization;
 using CUE4Parse.UE4.Objects.Engine;
+using CUE4Parse.UE4.Objects.UObject;
+using CUE4Parse.UE4.Objects.UObject.Editor;
 using CUE4Parse.UE4.Oodle.Objects;
 using CUE4Parse.UE4.Readers;
 using CUE4Parse.UE4.Shaders;
 using CUE4Parse.UE4.Versions;
 using CUE4Parse.UE4.Wwise;
+using CUE4Parse.Utils;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
 using CUE4Parse.FileProvider.Objects;
@@ -58,6 +72,7 @@ using FModel.Views;
 using FModel.Views.Resources.Controls;
 using FModel.Views.Snooper;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using Serilog;
@@ -142,6 +157,8 @@ public class CUE4ParseViewModel : ViewModel
     public WwiseProvider WwiseProvider => _wwiseProviderLazy.Value;
     private Lazy<FModProvider> _fmodProviderLazy;
     public FModProvider FmodProvider => _fmodProviderLazy?.Value;
+    private Lazy<CriWareProvider> _criWareProviderLazy;
+    public CriWareProvider CriWareProvider => _criWareProviderLazy?.Value;
     public ConcurrentBag<string> UnknownExtensions = [];
 
     public CUE4ParseViewModel()
@@ -297,6 +314,7 @@ public class CUE4ParseViewModel : ViewModel
             Provider.Initialize();
             _wwiseProviderLazy = new Lazy<WwiseProvider>(() => new WwiseProvider(Provider, UserSettings.Default.WwiseMaxBnkPrefetch));
             _fmodProviderLazy = new Lazy<FModProvider>(() => new FModProvider(Provider, UserSettings.Default.GameDirectory));
+            _criWareProviderLazy = new Lazy<CriWareProvider>(() => new CriWareProvider(Provider, UserSettings.Default.GameDirectory));
             Log.Information($"{Provider.Versions.Game} ({Provider.Versions.Platform}) | Archives: x{Provider.UnloadedVfs.Count} | AES: x{Provider.RequiredKeys.Count} | Loose Files: x{Provider.Files.Count}");
         });
     }
@@ -587,6 +605,9 @@ public class CUE4ParseViewModel : ViewModel
     public void AnimationFolder(CancellationToken cancellationToken, TreeItem folder)
         => BulkFolder(cancellationToken, folder, asset => Extract(cancellationToken, asset, TabControl.HasNoTabs, EBulkType.Animations | EBulkType.Auto));
 
+    public void AudioFolder(CancellationToken cancellationToken, TreeItem folder)
+        => BulkFolder(cancellationToken, folder, asset => Extract(cancellationToken, asset, TabControl.HasNoTabs, EBulkType.Audio | EBulkType.Auto));
+
     public void Extract(CancellationToken cancellationToken, GameFile entry, bool addNewTab = false, EBulkType bulk = EBulkType.None)
     {
         Log.Information("User DOUBLE-CLICKED to extract '{FullPath}'", entry.Path);
@@ -598,6 +619,7 @@ public class CUE4ParseViewModel : ViewModel
         var updateUi = !HasFlag(bulk, EBulkType.Auto);
         var saveProperties = HasFlag(bulk, EBulkType.Properties);
         var saveTextures = HasFlag(bulk, EBulkType.Textures);
+        var saveAudio = HasFlag(bulk, EBulkType.Audio);
         switch (entry.Extension)
         {
             case "uasset":
@@ -648,6 +670,11 @@ public class CUE4ParseViewModel : ViewModel
 
                 break;
             }
+            case "dat" when Provider.ProjectName.Equals("Aion2", StringComparison.OrdinalIgnoreCase):
+                {
+                    ProcessAion2DatFile(entry, updateUi, saveProperties);
+                    break;
+                }
             case "upluginmanifest":
             case "code-workspace":
             case "projectstore":
@@ -659,6 +686,7 @@ public class CUE4ParseViewModel : ViewModel
             case "dnearchive": // Banishers: Ghosts of New Eden
             case "gitignore":
             case "LICENSE":
+            case "playstats": // Dispatch
             case "template":
             case "stUMeta": // LIS: Double Exposure
             case "vmodule":
@@ -752,6 +780,26 @@ public class CUE4ParseViewModel : ViewModel
 
                 break;
             }
+            case "bank":
+            {
+                var archive = entry.CreateReader();
+                if (!FModProvider.TryLoadBank(archive, entry.NameWithoutExtension, out var fmodReader))
+                {
+                    Log.Error($"Failed to load FMOD bank {entry.Path}");
+                    break;
+                }
+
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(fmodReader, Formatting.Indented, converters: [new FmodSoundBankConverter(), new StringEnumConverter()]), saveProperties, updateUi);
+
+                var extractedSounds = FmodProvider.ExtractBankSounds(fmodReader);
+                var directory = Path.GetDirectoryName(entry.Path) ?? "/FMOD/Desktop/";
+                foreach (var sound in extractedSounds)
+                {
+                    SaveAndPlaySound(Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio);
+                }
+
+                break;
+            }
             case "bnk":
             case "pck":
             {
@@ -762,7 +810,39 @@ public class CUE4ParseViewModel : ViewModel
                 var medias = WwiseProvider.ExtractBankSounds(wwise);
                 foreach (var media in medias)
                 {
-                    SaveAndPlaySound(media.OutputPath, media.Extension, media.Data);
+                    SaveAndPlaySound(media.OutputPath, media.Extension, media.Data, saveAudio);
+                }
+
+                break;
+            }
+            case "awb":
+            {
+                var archive = entry.CreateReader();
+                var awbReader = new AwbReader(archive);
+
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(awbReader, Formatting.Indented), saveProperties, updateUi);
+
+                var directory = Path.GetDirectoryName(archive.Name) ?? "/Criware/";
+                var extractedSounds = CriWareProvider.ExtractCriWareSounds(awbReader, archive.Name);
+                foreach (var sound in extractedSounds)
+                {
+                    SaveAndPlaySound(Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio);
+                }
+
+                break;
+            }
+            case "acb":
+            {
+                var archive = entry.CreateReader();
+                var acbReader = new AcbReader(archive);
+
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(acbReader, Formatting.Indented), saveProperties, updateUi);
+
+                var directory = Path.GetDirectoryName(archive.Name) ?? "/Criware/";
+                var extractedSounds = CriWareProvider.ExtractCriWareSounds(acbReader, archive.Name);
+                foreach (var sound in extractedSounds)
+                {
+                    SaveAndPlaySound(Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio);
                 }
 
                 break;
@@ -777,7 +857,7 @@ public class CUE4ParseViewModel : ViewModel
                 // todo: CSCore.MediaFoundation.MediaFoundationException The byte stream type of the given URL is unsupported. case "aif":
             {
                 var data = Provider.SaveAsset(entry);
-                SaveAndPlaySound(entry.PathWithoutExtension, entry.Extension, data);
+                SaveAndPlaySound(entry.PathWithoutExtension, entry.Extension, data, saveAudio);
 
                 break;
             }
@@ -873,6 +953,37 @@ public class CUE4ParseViewModel : ViewModel
                 break;
             }
         }
+
+        void ProcessAion2DatFile(GameFile entry, bool updateUi, bool saveProperties)
+        {
+            TabControl.SelectedTab.Highlighter = AvalonExtensions.HighlighterSelector("json");
+            if (entry.NameWithoutExtension.EndsWith("_MapEvent"))
+            {
+                var data = Provider.SaveAsset(entry);
+                FAion2DatFileArchive.DecryptData(data);
+                using var stream = new MemoryStream(data) { Position = 0 };
+                using var reader = new StreamReader(stream);
+
+                TabControl.SelectedTab.SetDocumentText(reader.ReadToEnd(), saveProperties, updateUi);
+            }
+            else if (entry.NameWithoutExtension.Equals("L10NString"))
+            {
+                var l10nData = new FAion2L10NFile(entry);
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(l10nData, Formatting.Indented), saveProperties, updateUi);
+            }
+            else
+            {
+                FAion2DataFile datfile = entry.NameWithoutExtension switch
+                {
+                    "MapDataHierarchy" => new FAion2MapHierarchyFile(entry),
+                    "MapData" => new FAion2MapDataFile(entry, Provider),
+                    _ when entry.Directory.EndsWith("Data/WorldMap", StringComparison.OrdinalIgnoreCase) => new FAion2MapDataFile(entry, Provider),
+                    _ => new FAion2DataTableFile(entry, Provider)
+                };
+
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(datfile, Formatting.Indented), saveProperties, updateUi);
+            }
+        }
     }
 
     public void ExtractAndScroll(CancellationToken cancellationToken, string fullPath, string objectName, string parentExportType)
@@ -901,6 +1012,7 @@ public class CUE4ParseViewModel : ViewModel
         var isNone = bulk == EBulkType.None;
         var updateUi = !HasFlag(bulk, EBulkType.Auto);
         var saveTextures = HasFlag(bulk, EBulkType.Textures);
+        var saveAudio = HasFlag(bulk, EBulkType.Audio);
 
         var pointer = new FPackageIndex(pkg, index + 1).ResolvedObject;
         if (pointer?.Object is null) return false;
@@ -971,41 +1083,60 @@ public class CUE4ParseViewModel : ViewModel
                 TabControl.SelectedTab.AddImage(sourceFile.SubstringAfterLast('/'), false, bitmap, false, updateUi);
                 return false;
             }
-            case UAkAudioEvent when isNone && pointer.Object.Value is UAkAudioEvent audioEvent:
+            case UAkAudioEvent when (isNone || saveAudio) && pointer.Object.Value is UAkAudioEvent audioEvent:
             {
                 var extractedSounds = WwiseProvider.ExtractAudioEventSounds(audioEvent);
                 foreach (var sound in extractedSounds)
                 {
-                    SaveAndPlaySound(sound.OutputPath, sound.Extension, sound.Data);
+                    SaveAndPlaySound(sound.OutputPath, sound.Extension, sound.Data, saveAudio);
                 }
 
                 return false;
             }
-            case UFMODEvent when isNone && pointer.Object.Value is UFMODEvent fmodEvent:
+            case UFMODEvent when (isNone || saveAudio) && pointer.Object.Value is UFMODEvent fmodEvent:
             {
                 var extractedSounds = FmodProvider.ExtractEventSounds(fmodEvent);
                 var directory = Path.GetDirectoryName(fmodEvent.Owner?.Name) ?? "/FMOD/Desktop/";
                 foreach (var sound in extractedSounds)
                 {
-                    SaveAndPlaySound(Path.Combine(directory, sound.Name), sound.Extension, sound.Data);
+                    SaveAndPlaySound(Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio);
                 }
 
                 return false;
             }
-            case UFMODBank when isNone && pointer.Object.Value is UFMODBank fmodBank:
+            case UFMODBank when (isNone || saveAudio) && pointer.Object.Value is UFMODBank fmodBank:
             {
                 var extractedSounds = FmodProvider.ExtractBankSounds(fmodBank);
                 var directory = Path.GetDirectoryName(fmodBank.Owner?.Name) ?? "/FMOD/Desktop/";
                 foreach (var sound in extractedSounds)
                 {
-                    SaveAndPlaySound(Path.Combine(directory, sound.Name), sound.Extension, sound.Data);
+                    SaveAndPlaySound(Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio);
                 }
 
                 return false;
             }
-            case UAkMediaAssetData when isNone:
+            case USoundAtomCueSheet or UAtomCueSheet or USoundAtomCue or UAtomWaveBank when (isNone || saveAudio) && pointer.Object.Value is UObject atomObject:
+            {
+                var extractedSounds = atomObject switch
+                {
+                    USoundAtomCueSheet cueSheet => CriWareProvider.ExtractCriWareSounds(cueSheet),
+                    UAtomCueSheet cueSheet => CriWareProvider.ExtractCriWareSounds(cueSheet),
+                    USoundAtomCue cue => CriWareProvider.ExtractCriWareSounds(cue),
+                    UAtomWaveBank awb => CriWareProvider.ExtractCriWareSounds(awb),
+                    _ => []
+                };
+
+                var directory = Path.GetDirectoryName(atomObject.Owner?.Name) ?? "/Criware/";
+                directory = Path.GetDirectoryName(atomObject.Owner.Provider.FixPath(directory));
+                foreach (var sound in extractedSounds)
+                {
+                    SaveAndPlaySound(Path.Combine(directory, sound.Name).Replace("\\", "/"), sound.Extension, sound.Data, saveAudio);
+                }
+                return false;
+            }
+            case UAkMediaAssetData when isNone || saveAudio:
             case USoundNodeWave when isNone:
-            case USoundWave when isNone:
+            case USoundWave when isNone || saveAudio:
             {
                 var shouldDecompress = UserSettings.Default.CompressedAudioMode == ECompressedAudio.PlayDecompressed;
                 pointer.Object.Value.Decode(shouldDecompress, out var audioFormat, out var data);
@@ -1016,7 +1147,7 @@ public class CUE4ParseViewModel : ViewModel
                     return false;
                 }
 
-                SaveAndPlaySound(TabControl.SelectedTab.Entry.PathWithoutExtension.Replace('\\', '/'), audioFormat, data);
+                SaveAndPlaySound(TabControl.SelectedTab.Entry.PathWithoutExtension.Replace('\\', '/'), audioFormat, data, saveAudio);
                 return false;
             }
             case UWorld when isNone && UserSettings.Default.PreviewWorlds:
@@ -1137,7 +1268,7 @@ public class CUE4ParseViewModel : ViewModel
         TabControl.SelectedTab.SetDocumentText(cpp, false, false);
     }
 
-    private void SaveAndPlaySound(string fullPath, string ext, byte[] data)
+    private void SaveAndPlaySound(string fullPath, string ext, byte[] data, bool isBulk)
     {
         if (fullPath.StartsWith('/')) fullPath = fullPath[1..];
         var savedAudioPath = Path.Combine(UserSettings.Default.AudioDirectory,
@@ -1169,7 +1300,7 @@ public class CUE4ParseViewModel : ViewModel
         }
 
 
-        if (!UserSettings.Default.IsAutoOpenSounds)
+        if (isBulk)
         {
             Directory.CreateDirectory(savedAudioPath.SubstringBeforeLast('/'));
             using var stream = new FileStream(savedAudioPath, FileMode.Create, FileAccess.Write);

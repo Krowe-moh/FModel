@@ -140,13 +140,6 @@ namespace FModel.Settings
             set => SetProperty(ref _lastOpenedSettingTab, value);
         }
 
-        private bool _isAutoOpenSounds = true;
-        public bool IsAutoOpenSounds
-        {
-            get => _isAutoOpenSounds;
-            set => SetProperty(ref _isAutoOpenSounds, value);
-        }
-
         private bool _isLoggerExpanded = true;
         public bool IsLoggerExpanded
         {

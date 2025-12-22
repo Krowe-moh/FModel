@@ -22,7 +22,7 @@ namespace FModel.ViewModels.ApiEndpoints;
 
 public class ValorantApiEndpoint : AbstractApiProvider
 {
-    private const string _URL = "https://fmodel.fortnite-api.com/valorant/v2/manifest";
+    private const string _URL = "https://valorant-api.com/v1/fmodel/manifest";
 
     public ValorantApiEndpoint(RestClient client) : base(client) { }
 
@@ -30,6 +30,8 @@ public class ValorantApiEndpoint : AbstractApiProvider
     {
         var request = new FRestRequest(_URL);
         var response = await _client.ExecuteAsync(request, token).ConfigureAwait(false);
+        if (!response.IsSuccessful)
+            return null;
         return new VManifest(response.RawBytes);
     }
 
@@ -175,7 +177,7 @@ public readonly struct VChunk
     public readonly ulong Id;
     public readonly uint Size;
 
-    public string GetUrl() => $"https://fmodel.fortnite-api.com/valorant/v2/chunks/{Id}";
+    public string GetUrl() => $"https://valorant-api.com/v1/fmodel/chunks/{Id}";
 }
 
 public class VPakStream : RandomAccessStream, ICloneable

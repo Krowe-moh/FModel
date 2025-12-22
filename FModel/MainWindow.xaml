@@ -103,9 +103,6 @@
                         </Viewbox>
                     </MenuItem.Icon>
                 </MenuItem>
-                <Separator />
-                <MenuItem Header="Auto Open Sounds" IsCheckable="True" StaysOpenOnClick="True"
-                          IsChecked="{Binding IsAutoOpenSounds, Source={x:Static settings:UserSettings.Default}}" />
             </MenuItem>
             <MenuItem Header="Views">
                 <MenuItem Header="3D Viewer" Command="{Binding MenuCommand}" CommandParameter="Views_3dViewer">
@@ -376,6 +373,15 @@
                                                 </Viewbox>
                                             </MenuItem.Icon>
                                         </MenuItem>
+                                        <MenuItem Header="Save Folder's Packages Audio" Click="OnFolderAudioClick">
+                                            <MenuItem.Icon>
+                                                <Viewbox Width="16" Height="16">
+                                                    <Canvas Width="24" Height="24">
+                                                        <Path Fill="{DynamicResource {x:Static adonisUi:Brushes.ForegroundBrush}}" Data="{StaticResource AudioIcon}" />
+                                                    </Canvas>
+                                                </Viewbox>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <Separator />
                                         <MenuItem Header="Favorite Directory" Click="OnFavoriteDirectoryClick">
                                             <MenuItem.Icon>
@@ -608,6 +614,21 @@
                                                     </Viewbox>
                                                 </MenuItem.Icon>
                                             </MenuItem>
+                                            <MenuItem Header="Save Audio" Command="{Binding DataContext.RightClickMenuCommand}">
+                                                <MenuItem.CommandParameter>
+                                                    <MultiBinding Converter="{x:Static converters:MultiParameterConverter.Instance}">
+                                                        <Binding Source="Assets_Save_Audio" />
+                                                        <Binding Path="SelectedItems" />
+                                                    </MultiBinding>
+                                                </MenuItem.CommandParameter>
+                                                <MenuItem.Icon>
+                                                    <Viewbox Width="16" Height="16">
+                                                        <Canvas Width="24" Height="24">
+                                                            <Path Fill="{DynamicResource {x:Static adonisUi:Brushes.ForegroundBrush}}" Data="{StaticResource AudioIcon}" />
+                                                        </Canvas>
+                                                    </Viewbox>
+                                                </MenuItem.Icon>
+                                            </MenuItem>
                                             <Separator />
                                             <MenuItem Header="Copy">
                                                 <MenuItem.Icon>
@@ -836,19 +857,6 @@
                                 <Path Fill="{DynamicResource {x:Static adonisUi:Brushes.AccentForegroundBrush}}" Data="{StaticResource StatusBarIcon}" />
                             </Canvas>
                         </Viewbox>
-                    </StatusBarItem>
-
-                    <StatusBarItem Width="30" HorizontalContentAlignment="Stretch" ToolTip="Auto Open Sounds Enabled">
-                        <StatusBarItem.Style>
-                            <Style TargetType="StatusBarItem">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsAutoOpenSounds, Source={x:Static settings:UserSettings.Default}}" Value="False">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StatusBarItem.Style>
-                        <TextBlock HorizontalAlignment="Center" FontWeight="SemiBold" Text="SND" />
                     </StatusBarItem>
 
                     <StatusBarItem Margin="10 0 0 0">
