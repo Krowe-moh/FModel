@@ -241,13 +241,13 @@ public class Options
     }
 
     /// <summary>
-    /// Skip emmisive for specific games, cause of excessive use in their materials
+    /// Skip emissive for specific games, cause of excessive use in their materials
     /// </summary>
-    public bool SkipEmmisive()
+    public bool SkipEmissive()
     {
         return _game switch
         {
-            "LIESOFP" => true,
+            "LIESOFP" or "CODEVEIN2" or "HIGHONLIFE2" => true,
             _ => false,
         };
     }

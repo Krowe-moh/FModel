@@ -120,7 +120,7 @@ public class Material : IDisposable
                     RoughnessMax = roughness + d;
                 }
 
-                if (!options.SkipEmmisive())
+                if (!options.SkipEmissive())
                 {
                     if (Parameters.TryGetScalar(out var emissiveMultScalar, "emissive mult", "Emissive_Mult", "EmissiveIntensity", "EmissionIntensity"))
                         EmissiveMult = emissiveMultScalar;

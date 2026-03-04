@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
@@ -154,6 +154,12 @@ public class FLogger : ITextFormatter
     public void SetText(FlowDocument document, string text)
     {
         new TextRange(document.ContentStart, document.ContentEnd).Text = text;
+    }
+
+    public static void ClearLogs()
+    {
+        Logger.Document.Blocks.Clear();
+        _previous = 0;
     }
 }
 

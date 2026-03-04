@@ -86,7 +86,7 @@
                     <Binding.Converter>
                         <converters:AnyItemMeetsConditionConverter>
                             <converters:AnyItemMeetsConditionConverter.Conditions>
-                                <converters:ItemCategoryCondition Category="Blueprint" />
+                                <converters:ItemActionCondition Action="Code" />
                             </converters:AnyItemMeetsConditionConverter.Conditions>
                         </converters:AnyItemMeetsConditionConverter>
                     </Binding.Converter>
@@ -110,7 +110,8 @@
             </MenuItem.Style>
         </MenuItem>
         <Separator />
-        <MenuItem Command="{Binding RightClickMenuCommand}">
+        <MenuItem Command="{Binding RightClickMenuCommand}"
+                  Visibility="{Binding CanExportRawData, Source={x:Static settings:UserSettings.Default}, Converter={StaticResource BoolToVisibilityConverter}}">
             <MenuItem.Header>
                 <TextBlock
                     Text="{Binding PlacementTarget.SelectedItem.Asset.Extension,
@@ -159,7 +160,7 @@
                     <Binding.Converter>
                         <converters:AnyItemMeetsConditionConverter>
                             <converters:AnyItemMeetsConditionConverter.Conditions>
-                                <converters:ItemCategoryCondition Category="Texture" />
+                                <converters:ItemActionCondition Action="Textures" />
                             </converters:AnyItemMeetsConditionConverter.Conditions>
                         </converters:AnyItemMeetsConditionConverter>
                     </Binding.Converter>
@@ -185,7 +186,7 @@
                     <Binding.Converter>
                         <converters:AnyItemMeetsConditionConverter>
                             <converters:AnyItemMeetsConditionConverter.Conditions>
-                                <converters:ItemCategoryCondition Category="Mesh" />
+                                <converters:ItemActionCondition Action="Meshes" />
                             </converters:AnyItemMeetsConditionConverter.Conditions>
                         </converters:AnyItemMeetsConditionConverter>
                     </Binding.Converter>
@@ -211,7 +212,7 @@
                     <Binding.Converter>
                         <converters:AnyItemMeetsConditionConverter>
                             <converters:AnyItemMeetsConditionConverter.Conditions>
-                                <converters:ItemCategoryCondition Category="Animation" />
+                                <converters:ItemActionCondition Action="Animations" />
                             </converters:AnyItemMeetsConditionConverter.Conditions>
                         </converters:AnyItemMeetsConditionConverter>
                     </Binding.Converter>
@@ -237,7 +238,7 @@
                     <Binding.Converter>
                         <converters:AnyItemMeetsConditionConverter>
                             <converters:AnyItemMeetsConditionConverter.Conditions>
-                                <converters:ItemCategoryCondition Category="Audio" />
+                                <converters:ItemActionCondition Action="Audio" />
                             </converters:AnyItemMeetsConditionConverter.Conditions>
                         </converters:AnyItemMeetsConditionConverter>
                     </Binding.Converter>

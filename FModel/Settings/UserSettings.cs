@@ -252,6 +252,13 @@ namespace FModel.Settings
             set => SetProperty(ref _imageMergerMargin, value);
         }
 
+        private bool _canExportRawData;
+        public bool CanExportRawData
+        {
+            get => _canExportRawData;
+            set => SetProperty(ref _canExportRawData, value);
+        }
+
         private bool _readScriptData;
         public bool ReadScriptData
         {
@@ -264,6 +271,13 @@ namespace FModel.Settings
         {
             get => _readShaderMaps;
             set => SetProperty(ref _readShaderMaps, value);
+        }
+
+        private bool _convertAudioOnBulkExport;
+        public bool ConvertAudioOnBulkExport
+        {
+            get => _convertAudioOnBulkExport;
+            set => SetProperty(ref _convertAudioOnBulkExport, value);
         }
 
         private IDictionary<string, DirectorySettings> _perDirectory = new Dictionary<string, DirectorySettings>();

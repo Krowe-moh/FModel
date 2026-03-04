@@ -5,21 +5,30 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+
 using CUE4Parse.FileProvider.Objects;
+using CUE4Parse.GameTypes.Borderlands3.Assets.Exports;
+using CUE4Parse.GameTypes.Borderlands4.Assets.Exports;
 using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
+using CUE4Parse.GameTypes.SMG.UE4.Assets.Exports.Wwise;
+using CUE4Parse.GameTypes.SMG.UE4.Assets.Objects;
 using CUE4Parse.UE4.Assets;
+using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.BuildData;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.CriWare;
+using CUE4Parse.UE4.Assets.Exports.CustomizableObject;
 using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.Engine.Font;
 using CUE4Parse.UE4.Assets.Exports.Fmod;
+using CUE4Parse.UE4.Assets.Exports.FMod;
 using CUE4Parse.UE4.Assets.Exports.Foliage;
 using CUE4Parse.UE4.Assets.Exports.Internationalization;
 using CUE4Parse.UE4.Assets.Exports.LevelSequence;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.Material.Editor;
+using CUE4Parse.UE4.Assets.Exports.Nanite;
 using CUE4Parse.UE4.Assets.Exports.Niagara;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Sound;
@@ -36,13 +45,19 @@ using CUE4Parse.UE4.Objects.PhysicsEngine;
 using CUE4Parse.UE4.Objects.RigVM;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.UE4.Objects.UObject.Editor;
+using CUE4Parse.UE4.Versions;
 using CUE4Parse.Utils;
+
 using CUE4Parse_Conversion.Textures;
+
 using FModel.Framework;
 using FModel.Services;
 using FModel.Settings;
+
 using Serilog;
+
 using SkiaSharp;
+
 using Svg.Skia;
 
 namespace FModel.ViewModels;
@@ -81,6 +96,16 @@ public class GameFileViewModel(GameFile asset) : ViewModel
         }
     }
 
+    private EBulkType _assetActions = EBulkType.None;
+    public EBulkType AssetActions
+    {
+        get => _assetActions;
+        private set
+        {
+            SetProperty(ref _assetActions, value);
+        }
+    }
+
     private ImageSource _previewImage;
     public ImageSource PreviewImage
     {
@@ -92,6 +117,13 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 Resolved |= EResolveCompute.Preview;
             }
         }
+    }
+
+    private int _numTextures = 0;
+    public int NumTextures
+    {
+        get => _numTextures;
+        private set => SetProperty(ref _numTextures, value);
     }
 
     public Task ExtractAsync()
@@ -135,6 +167,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
         if (Asset.Extension is "umap")
         {
             AssetCategory = EAssetCategory.World;
+            AssetActions = EBulkType.Meshes | EBulkType.Textures | EBulkType.Audio | EBulkType.Code;
             ResolvedAssetType = "World";
             Resolved |= EResolveCompute.Preview;
             return Task.CompletedTask;
@@ -142,6 +175,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
         if (Asset.NameWithoutExtension.EndsWith("_BuiltData"))
         {
             AssetCategory = EAssetCategory.BuildData;
+            AssetActions = EBulkType.Textures;
             ResolvedAssetType = "MapBuildDataRegistry";
             Resolved |= EResolveCompute.Preview;
             return Task.CompletedTask;
@@ -162,51 +196,73 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             if (pointer?.Object is null)
                 return;
 
-            var dummy = ((AbstractUePackage) pkg).ConstructObject(pointer.Class?.Object?.Value as UStruct, pkg);
+            var dummy = ((AbstractUePackage) pkg).ConstructObject(pointer.Class, pkg);
             ResolvedAssetType = dummy.ExportType;
 
-            AssetCategory = dummy switch
+            (AssetCategory, AssetActions) = dummy switch
             {
-                URigVMBlueprintGeneratedClass => EAssetCategory.RigVMBlueprintGeneratedClass,
-                UAnimBlueprintGeneratedClass => EAssetCategory.AnimBlueprintGeneratedClass,
-                UWidgetBlueprintGeneratedClass => EAssetCategory.WidgetBlueprintGeneratedClass,
-                UBlueprintGeneratedClass or UFunction => EAssetCategory.BlueprintGeneratedClass,
-                UUserDefinedEnum => EAssetCategory.UserDefinedEnum,
-                UUserDefinedStruct => EAssetCategory.UserDefinedStruct,
-                UBlueprintCore => EAssetCategory.Blueprint,
-                UClassCookedMetaData or UStructCookedMetaData or UEnumCookedMetaData => EAssetCategory.CookedMetaData,
+                URigVMBlueprintGeneratedClass => (EAssetCategory.RigVMBlueprintGeneratedClass, EBulkType.Code),
+                UAnimBlueprintGeneratedClass => (EAssetCategory.AnimBlueprintGeneratedClass, EBulkType.Code),
+                UWidgetBlueprintGeneratedClass => (EAssetCategory.WidgetBlueprintGeneratedClass, EBulkType.Code),
+                UBlueprintGeneratedClass or UFunction => (EAssetCategory.BlueprintGeneratedClass, EBulkType.Code),
+                UUserDefinedEnum => (EAssetCategory.UserDefinedEnum, EBulkType.None),
+                UUserDefinedStruct => (EAssetCategory.UserDefinedStruct, EBulkType.Code),
+                UBlueprintCore => (EAssetCategory.Blueprint, EBulkType.Code),
+                UClassCookedMetaData or UStructCookedMetaData or UEnumCookedMetaData => (EAssetCategory.CookedMetaData, EBulkType.None),
 
-                UStaticMesh => EAssetCategory.StaticMesh,
-                USkeletalMesh => EAssetCategory.SkeletalMesh,
-                UPhysicsAsset => EAssetCategory.PhysicsAsset,
+                UStaticMesh => (EAssetCategory.StaticMesh, EBulkType.Meshes),
+                USkeletalMesh => (EAssetCategory.SkeletalMesh, EBulkType.Meshes),
+                UCustomizableObject => (EAssetCategory.CustomizableObject, EBulkType.None),
+                UNaniteDisplacedMesh => (EAssetCategory.NaniteDisplacedMesh, EBulkType.None),
 
-                UTexture => EAssetCategory.Texture,
+                UTexture => (EAssetCategory.Texture, EBulkType.Textures),
 
-                UMaterialInterface => EAssetCategory.Material,
-                UMaterialInterfaceEditorOnlyData => EAssetCategory.MaterialEditorData,
-                UMaterialFunction => EAssetCategory.MaterialFunction,
-                UMaterialParameterCollection => EAssetCategory.MaterialParameterCollection,
+                UMaterialInterface => (EAssetCategory.Material, EBulkType.None),
+                UMaterialInterfaceEditorOnlyData => (EAssetCategory.MaterialEditorData, EBulkType.None),
+                UMaterialFunction => (EAssetCategory.MaterialFunction, EBulkType.None),
+                UMaterialFunctionEditorOnlyData => (EAssetCategory.MaterialFunctionEditorData, EBulkType.None),
+                UMaterialParameterCollection => (EAssetCategory.MaterialParameterCollection, EBulkType.None),
 
-                UAnimationAsset => EAssetCategory.Animation,
-                USkeleton => EAssetCategory.Skeleton,
+                UAnimationAsset => (EAssetCategory.Animation, EBulkType.Animations),
+                USkeleton => (EAssetCategory.Skeleton, EBulkType.Meshes),
+                URig => (EAssetCategory.Rig, EBulkType.None),
 
-                UWorld => EAssetCategory.World,
-                UMapBuildDataRegistry => EAssetCategory.BuildData,
-                ULevelSequence => EAssetCategory.LevelSequence,
-                UFoliageType => EAssetCategory.Foliage,
+                UWorld => (EAssetCategory.World, EBulkType.Meshes | EBulkType.Textures | EBulkType.Audio | EBulkType.Code),
+                UMapBuildDataRegistry => (EAssetCategory.BuildData, EBulkType.Textures),
+                ULevelSequence => (EAssetCategory.LevelSequence, EBulkType.Code),
+                UFoliageType => (EAssetCategory.Foliage, EBulkType.None),
 
-                UItemDefinitionBase => EAssetCategory.ItemDefinitionBase,
-                UDataAsset or UDataTable or UCurveTable or UStringTable => EAssetCategory.Data,
-                UCurveBase => EAssetCategory.CurveBase,
+                UItemDefinitionBase => (EAssetCategory.ItemDefinitionBase, EBulkType.Textures),
+                UDataAsset or UDataTable or UCurveTable or UStringTable => (EAssetCategory.Data, EBulkType.None),
+                UCurveBase => (EAssetCategory.CurveBase, EBulkType.None),
+                UPhysicsAsset => (EAssetCategory.PhysicsAsset, EBulkType.None),
+                UObjectRedirector => (EAssetCategory.ObjectRedirector, EBulkType.None),
+                UPhysicalMaterial => (EAssetCategory.PhysicalMaterial, EBulkType.None),
 
-                UWwiseAssetLibrary or USoundBase or UAkMediaAssetData or UAtomWaveBank or USoundAtomCue
-                    or UAtomCueSheet or USoundAtomCueSheet or UFMODBank or UFMODEvent or UAkAudioType => EAssetCategory.Audio,
-                UFileMediaSource => EAssetCategory.Video,
-                UFont or UFontFace => EAssetCategory.Font,
+                USoundAtomCue or UAkAudioEvent or USoundCue or UFMODEvent
+                    or UAkAssetData or UAkAssetPlatformData => (EAssetCategory.AudioEvent, EBulkType.Audio),
 
-                UNiagaraSystem or UNiagaraScriptBase or UParticleSystem => EAssetCategory.Particle,
+                UFMODBankLookup => (EAssetCategory.Data, EBulkType.None),
 
-                _ => EAssetCategory.All
+                UFMODBus or UFMODSnapshot or UFMODSnapshotReverb or UFMODVCA => (EAssetCategory.Audio, EBulkType.None),
+
+                UFMODBank or UAkAudioBank or UAtomWaveBank or UAkInitBank => (EAssetCategory.SoundBank, EBulkType.Audio),
+
+                UWwiseAssetLibrary or USoundBase or UAkMediaAssetData or UAtomCueSheet
+                    or USoundAtomCueSheet or UAkAudioType or UExternalSource or UExternalSourceBank
+                    or UAkMediaAsset => (EAssetCategory.Audio, EBulkType.Audio),
+
+                UFileMediaSource => (EAssetCategory.Video, EBulkType.None),
+                UFont or UFontFace or USMGLocaleFontUMG => (EAssetCategory.Font, EBulkType.None),
+
+                UNiagaraSystem or UNiagaraScriptBase or UParticleSystem => (EAssetCategory.Particle, EBulkType.None),
+
+                // Game specific assets below
+                UBorderlandsDialogObject => (EAssetCategory.Borderlands, EBulkType.None), // Borderlands 3;
+                UGbxGraphAsset or UDialogScriptData or UDialogPerformanceData => (EAssetCategory.Borderlands, EBulkType.Audio), // Borderlands 4; Borderlands 3;
+                UFaceFXAnimSet when _applicationView.CUE4Parse?.Provider.Versions.Game is EGame.GAME_Borderlands4 => (EAssetCategory.Borderlands, EBulkType.Audio), // Borderlands 4;
+
+                _ => (EAssetCategory.All, EBulkType.None),
             };
 
             switch (AssetCategory)
@@ -215,6 +271,9 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 {
                     if (!resolve.HasFlag(EResolveCompute.Preview))
                         break;
+
+                    if (pointer.Object.Value is UTexture2DArray textureArray && textureArray.GetFirstMip() is { SizeZ: > 1 } firstMip)
+                        NumTextures = firstMip.SizeZ;
 
                     var img = texture.Decode(MaxPreviewSize, UserSettings.Default.CurrentDir.TexturePlatform);
                     if (img != null)
@@ -268,7 +327,8 @@ public class GameFileViewModel(GameFile asset) : ViewModel
     private Task ResolveByExtensionAsync(EResolveCompute resolve)
     {
         Resolved |= EResolveCompute.Preview;
-        switch (Asset.Extension)
+        var lowercaseExtension = Asset.Extension.ToLowerInvariant();
+        switch (lowercaseExtension)
         {
             case "uproject":
             case "uefnproject":
@@ -287,20 +347,33 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             case "log":
             case "pem":
             case "xml":
+            case "gitignore":
+            case "html":
+            case "css":
+            case "js":
+            case "data":
+            case "csv":
                 AssetCategory = EAssetCategory.Data;
                 break;
+            case "ushaderbytecode":
+                AssetCategory = EAssetCategory.ByteCode;
+                break;
             case "wav":
-            case "bank":
-            case "bnk":
-            case "pck":
-            case "awb":
-            case "acb":
+            case "awb": // This is technically soundbank and should be below but I want it to be distinguishable from "acb"
             case "xvag":
             case "flac":
             case "at9":
             case "wem":
             case "ogg":
                 AssetCategory = EAssetCategory.Audio;
+                AssetActions = EBulkType.Audio;
+                break;
+            case "acb":
+            case "bank":
+            case "bnk":
+            case "pck":
+                AssetCategory = EAssetCategory.SoundBank;
+                AssetActions = EBulkType.Audio;
                 break;
             case "ufont":
             case "otf":
@@ -317,6 +390,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             {
                 Resolved |= ~EResolveCompute.Preview;
                 AssetCategory = EAssetCategory.Texture;
+                AssetActions = EBulkType.Textures;
                 if (!resolve.HasFlag(EResolveCompute.Preview))
                     break;
 
@@ -327,7 +401,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                     stream.Position = 0;
 
                     SKBitmap bitmap;
-                    if (Asset.Extension == "svg")
+                    if (lowercaseExtension == "svg")
                     {
                         var svg = new SKSvg();
                         svg.Load(stream);
@@ -349,12 +423,17 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                         bitmap = SKBitmap.Decode(stream);
                     }
 
-                    using var image = bitmap.Encode(Asset.Extension == "jpg" ? SKEncodedImageFormat.Jpeg : SKEncodedImageFormat.Png, 100);
+                    using var image = bitmap.Encode(lowercaseExtension == "jpg" ? SKEncodedImageFormat.Jpeg : SKEncodedImageFormat.Png, 100);
                     SetPreviewImage(image);
 
                     bitmap.Dispose();
                 });
             }
+            // Game specific extensions below
+            case "ace": // Borderlands 3
+            case "ncs": // Borderlands 4
+                AssetCategory = EAssetCategory.Borderlands;
+                break;
             default:
                 AssetCategory = EAssetCategory.All; // just so it sets resolved
                 break;
