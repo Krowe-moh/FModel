@@ -43,6 +43,7 @@ public class RightClickMenuCommand : ViewModelCommand<ApplicationViewModel>
         if (param.Length == 0) return;
 
         var folders = param.OfType<TreeItem>().ToArray();
+        var searchMenu = param[0] is GameFile;
         var assets = param
             .Select(static item => item switch
             {
@@ -138,6 +139,20 @@ public class RightClickMenuCommand : ViewModelCommand<ApplicationViewModel>
                 _ => (entry, bulk, update) => contextViewModel.CUE4Parse.Extract(cancellationToken, entry, false, bulk),
             };
 
+            if (searchMenu)
+            {
+                var update = assets.Length > 1;
+                foreach (var entry in assets)
+                {
+                    Thread.Yield();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    fileAction(entry, bulktype | EBulkType.Auto, update);
+                }
+
+                LogExport(contextViewModel, filetype);
+                return;
+            }
+
             foreach (var group in assetsGroups)
             {
                 var directory = group.Key;
@@ -184,6 +199,28 @@ public class RightClickMenuCommand : ViewModelCommand<ApplicationViewModel>
             FLogger.Append(ELog.Error, () =>
             {
                 FLogger.Text($"Failed to export {contextViewModel.CUE4Parse.FailedExportCount} {fileType} from {directory}", Constants.WHITE, true);
+            });
+        }
+
+        Interlocked.Exchange(ref contextViewModel.CUE4Parse.ExportedCount, 0);
+        Interlocked.Exchange(ref contextViewModel.CUE4Parse.FailedExportCount, 0);
+    }
+
+    private void LogExport(ApplicationViewModel contextViewModel, string fileType)
+    {
+        if (contextViewModel.CUE4Parse.ExportedCount > 0)
+        {
+            FLogger.Append(ELog.Information, () =>
+            {
+                FLogger.Text($"Successfully exported {contextViewModel.CUE4Parse.ExportedCount} {fileType}", Constants.WHITE, true);
+            });
+        }
+
+        if (contextViewModel.CUE4Parse.FailedExportCount > 0)
+        {
+            FLogger.Append(ELog.Error, () =>
+            {
+                FLogger.Text($"Failed to export {contextViewModel.CUE4Parse.FailedExportCount} {fileType}", Constants.WHITE, true);
             });
         }
 
