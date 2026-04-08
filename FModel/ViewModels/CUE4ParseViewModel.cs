@@ -5,14 +5,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-
 using AdonisUI.Controls;
-
 using CUE4Parse;
 using CUE4Parse.Compression;
 using CUE4Parse.Encryption.Aes;
@@ -22,11 +20,13 @@ using CUE4Parse.FileProvider.Vfs;
 using CUE4Parse.GameTypes.Aion2.Objects;
 using CUE4Parse.GameTypes.AoC.Objects;
 using CUE4Parse.GameTypes.AshEchoes.FileProvider;
-using CUE4Parse.GameTypes.SMG.UE4.Assets.Exports.Wwise;
-using CUE4Parse.GameTypes.KRD.Assets.Exports;
+using CUE4Parse.GameTypes.Borderlands3.Assets.Exports;
 using CUE4Parse.GameTypes.Borderlands4.Assets.Exports;
 using CUE4Parse.GameTypes.Borderlands4.Wwise;
-using CUE4Parse.GameTypes.Borderlands3.Assets.Exports;
+using CUE4Parse.GameTypes.KRD.Assets.Exports;
+using CUE4Parse.GameTypes.RocoKingdomWorld.Assets.Objects;
+using CUE4Parse.GameTypes.SMG.UE4.Assets.Exports.Wwise;
+using CUE4Parse.GameTypes.SquareEnix.UE4.Assets.Exports;
 using CUE4Parse.MappingsProvider;
 using CUE4Parse.UE4.AssetRegistry;
 using CUE4Parse.UE4.Assets;
@@ -57,14 +57,11 @@ using CUE4Parse.UE4.Shaders;
 using CUE4Parse.UE4.Versions;
 using CUE4Parse.UE4.Wwise;
 using CUE4Parse.Utils;
-
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
-
 using EpicManifestParser;
 using EpicManifestParser.UE;
 using EpicManifestParser.ZlibngDotNetDecompressor;
-
 using FModel.Creator;
 using FModel.Extensions;
 using FModel.Framework;
@@ -73,21 +70,14 @@ using FModel.Settings;
 using FModel.Views;
 using FModel.Views.Resources.Controls;
 using FModel.Views.Snooper;
-
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
-
 using Serilog;
-
 using SkiaSharp;
-
 using Svg.Skia;
-
 using UE4Config.Parsing;
-
 using Application = System.Windows.Application;
 using FGuid = CUE4Parse.UE4.Objects.Core.Misc.FGuid;
 
@@ -695,6 +685,11 @@ public class CUE4ParseViewModel : ViewModel
                 ProcessAion2DatFile(entry, updateUi, saveProperties);
                 break;
             }
+            case "bytes" when Provider.Versions.Game is EGame.GAME_RocoKingdomWorld:
+            {
+                ProcessRocoBinFile(entry, updateUi, saveProperties);
+                break;
+            }
             case "dbc" when Provider.Versions.Game is EGame.GAME_AshesOfCreation:
             {
                 ProcessCacheDBFile(entry, updateUi, saveProperties);
@@ -981,6 +976,40 @@ public class CUE4ParseViewModel : ViewModel
             }
         }
 
+        // Roco Kingdom: World
+        void ProcessRocoBinFile(GameFile entry, bool updateUi, bool saveProperties)
+        {
+            TabControl.SelectedTab.Highlighter = AvalonExtensions.HighlighterSelector("json");
+            var nonFileName = "/" + entry.NameWithoutExtension + ".non";
+            var nonPath = Provider.Files.Keys.FirstOrDefault(k => k.EndsWith(nonFileName, StringComparison.OrdinalIgnoreCase));
+
+            // I will only get one localization file because they did not translate any languages, lol
+            var locPathKey = entry.Path.Replace("/BinData/", "/BinLocalize/en_US/").Replace("/BinDataCompressed/", "/BinLocalize/en_US/");
+            var locFileFound = Provider.Files.TryGetValue(locPathKey, out var locEntry);
+
+            if (!string.IsNullOrEmpty(nonPath) && Provider.Files.TryGetValue(nonPath, out var nonEntry))
+            {
+                string json = Encoding.UTF8.GetString(nonEntry.Read());
+                var schema = JsonConvert.DeserializeObject<FRocoSchema>(json);
+                var archive = entry.CreateReader();
+                var locArchive = locFileFound ? new FRocoBinData(locEntry.CreateReader(), null, ERocoBinDataType.BinLocalize) : null;
+
+                var data = entry.PathWithoutExtension switch
+                {
+                    var p when p.Contains("BinDataCompressed") => new FRocoBinData(archive, schema, ERocoBinDataType.BinDataCompressed, locArchive),
+                    var p when p.Contains("BinData") => new FRocoBinData(archive, schema, ERocoBinDataType.BinData, locArchive),
+                    var p when p.Contains("BinLocalize") => new FRocoBinData(archive, null, ERocoBinDataType.BinLocalize),
+                    _ => null
+                };
+
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(data, Formatting.Indented), saveProperties, updateUi);
+            }
+            else if (entry.PathWithoutExtension.Contains("/Bin/"))
+            {
+                throw new Exception($"Could not find associated .non file for {entry.Name}");
+            }
+        }
+
         void ProcessAion2DatFile(GameFile entry, bool updateUi, bool saveProperties)
         {
             TabControl.SelectedTab.Highlighter = AvalonExtensions.HighlighterSelector("json");
@@ -1171,20 +1200,20 @@ public class CUE4ParseViewModel : ViewModel
             case UFMODEvent when (isNone || saveAudio) && pointer.Object.Value is UFMODEvent fmodEvent:
             {
                 var extractedSounds = FmodProvider.ExtractEventSounds(fmodEvent);
-                var directory = Path.GetDirectoryName(fmodEvent.Owner?.Name) ?? "/FMOD/Desktop/";
+                var directory = Path.GetDirectoryName(Provider.FixPath(fmodEvent.Owner?.Name ?? "/FMOD/Desktop/"));
                 foreach (var sound in extractedSounds)
                 {
-                    SaveAndPlaySound(cancellationToken, Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio, updateUi);
+                    SaveAndPlaySound(cancellationToken, Path.Combine(directory, sound.Name).Replace("\\", "/"), sound.Extension, sound.Data, saveAudio, updateUi);
                 }
                 return false;
             }
             case UFMODBank when (isNone || saveAudio) && pointer.Object.Value is UFMODBank fmodBank:
             {
                 var extractedSounds = FmodProvider.ExtractBankSounds(fmodBank);
-                var directory = Path.GetDirectoryName(fmodBank.Owner?.Name) ?? "/FMOD/Desktop/";
+                var directory = Path.GetDirectoryName(Provider.FixPath(fmodBank.Owner?.Name ?? "/FMOD/Desktop/"));
                 foreach (var sound in extractedSounds)
                 {
-                    SaveAndPlaySound(cancellationToken, Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio, updateUi);
+                    SaveAndPlaySound(cancellationToken, Path.Combine(directory, sound.Name).Replace("\\", "/"), sound.Extension, sound.Data, saveAudio, updateUi);
                 }
                 return false;
             }
@@ -1204,6 +1233,22 @@ public class CUE4ParseViewModel : ViewModel
                 foreach (var sound in extractedSounds)
                 {
                     SaveAndPlaySound(cancellationToken, Path.Combine(directory, sound.Name).Replace("\\", "/"), sound.Extension, sound.Data, saveAudio, updateUi);
+                }
+                return false;
+            }
+            case USQEXSEADSoundBank or USQEXSEADSound when (isNone || saveAudio) && pointer.Object.Value is UObject squareEnixObject:
+            {
+                var data = squareEnixObject switch
+                {
+                    USQEXSEADSoundBank sqexSoundBank => sqexSoundBank.SQEXSoundBankData?.Data ?? [],
+                    USQEXSEADSound sqexSound => sqexSound.SQEXSoundData?.Data ?? [],
+                    _ => [],
+                };
+                var sabPath = Path.Combine(TabControl.SelectedTab.Entry.PathWithoutExtension.Replace('\\', '/').SubstringBeforeLast('/'), squareEnixObject.Name);
+                var extractedSounds = AudioPlayerViewModel.ExtractSquareEnixAudio(sabPath, data);
+                foreach (var soundPath in extractedSounds)
+                {
+                    SaveAndPlaySound(cancellationToken, soundPath, "wav", File.ReadAllBytes(soundPath), saveAudio, updateUi);
                 }
                 return false;
             }
@@ -1443,8 +1488,10 @@ public class CUE4ParseViewModel : ViewModel
     private void SaveAndPlaySound(CancellationToken cancellationToken, string fullPath, string ext, byte[] data, bool saveAudio, bool updateUi)
     {
         if (fullPath.StartsWith('/')) fullPath = fullPath[1..];
-        var savedAudioPath = Path.Combine(UserSettings.Default.AudioDirectory,
-            UserSettings.Default.KeepDirectoryStructure ? fullPath : fullPath.SubstringAfterLast('/')).Replace('\\', '/') + $".{ext.ToLowerInvariant()}";
+        var extLower = ext.ToLowerInvariant();
+        var baseFilePath = UserSettings.Default.KeepDirectoryStructure ? fullPath : fullPath.SubstringAfterLast('/');
+        var combinedPath = Path.Combine(UserSettings.Default.AudioDirectory, baseFilePath);
+        var savedAudioPath = Path.ChangeExtension(combinedPath, extLower).Replace('\\', '/');
 
         if (saveAudio)
         {
@@ -1453,7 +1500,7 @@ public class CUE4ParseViewModel : ViewModel
             Directory.CreateDirectory(directory);
 
             bool conversionSuccess = true;
-            if (UserSettings.Default.ConvertAudioOnBulkExport)
+            if (UserSettings.Default.ConvertAudioOnBulkExport && extLower is not "wav")
             {
                 if (AudioPlayerViewModel.TryConvert(savedAudioPath, data, out string wavFilePath))
                     savedAudioPath = wavFilePath;
