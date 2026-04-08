@@ -146,10 +146,10 @@ public class RightClickMenuCommand : ViewModelCommand<ApplicationViewModel>
                 {
                     Thread.Yield();
                     cancellationToken.ThrowIfCancellationRequested();
-                    fileAction(entry, bulktype | EBulkType.Auto, update);
+                    fileAction(entry, bulktype, update);
                 }
 
-                LogExport(contextViewModel, filetype);
+                if (assets.Length > 50) LogExport(contextViewModel, filetype);
                 return;
             }
 
@@ -212,15 +212,7 @@ public class RightClickMenuCommand : ViewModelCommand<ApplicationViewModel>
         {
             FLogger.Append(ELog.Information, () =>
             {
-                FLogger.Text($"Successfully exported {contextViewModel.CUE4Parse.ExportedCount} {fileType}", Constants.WHITE, true);
-            });
-        }
-
-        if (contextViewModel.CUE4Parse.FailedExportCount > 0)
-        {
-            FLogger.Append(ELog.Error, () =>
-            {
-                FLogger.Text($"Failed to export {contextViewModel.CUE4Parse.FailedExportCount} {fileType}", Constants.WHITE, true);
+                FLogger.Text($"Successfully exported {contextViewModel.CUE4Parse.ExportedCount} {fileType}, Failed to export {contextViewModel.CUE4Parse.FailedExportCount} {fileType} in other folders.", Constants.WHITE, true);
             });
         }
 
