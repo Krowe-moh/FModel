@@ -162,4 +162,11 @@ public enum EAssetCategory : uint
         Borderlands = GameSpecific + 1,
         Aion2 = GameSpecific + 2,
         RocoKingdomWorld = GameSpecific + 3,
+        DeltaForce = GameSpecific + 4,
+}
+
+public enum EUnluacMode
+{
+    Decompile,
+    Disassemble,
 }
