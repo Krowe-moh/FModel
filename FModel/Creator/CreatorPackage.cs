@@ -50,6 +50,9 @@ public class CreatorPackage : IDisposable
             case "CosmeticShoesItemDefinition":
             case "CosmeticCompanionItemDefinition":
             case "CosmeticCompanionReactFXItemDefinition":
+            case "MagpieEntitlementRewardDefinition":
+            case "FortDeferredItemGrantDefinition":
+            case "PiggybackDanceItemDefinition":
             case "AthenaPickaxeItemDefinition":
             case "AthenaGadgetItemDefinition":
             case "AthenaGliderItemDefinition":
