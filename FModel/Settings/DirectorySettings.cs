@@ -9,6 +9,7 @@ namespace FModel.Settings;
 
 public class DirectorySettings : ViewModel, ICloneable
 {
+    public bool IsAvailable { get; set; } = true;
     public static DirectorySettings Default(
         string gameName, string gameDir, bool manual = false, EGame ue = EGame.GAME_UE4_LATEST, string aes = "")
     {

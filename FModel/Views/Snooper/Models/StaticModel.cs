@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using CUE4Parse_Conversion.Meshes.PSK;
+using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.Texture;
@@ -144,6 +145,12 @@ public class StaticModel : UModel
                 Sockets.Add(new Socket(socket));
             }
         }
+    }
+
+
+    public StaticModel(CUE4Parse.UE4.Objects.Engine.UModel export, CStaticMesh staticMesh, Transform transform = null)
+        : base(export, staticMesh.LODs[LodLevel], Array.Empty<ResolvedObject>(), staticMesh.LODs[LodLevel].Verts, staticMesh.LODs.Count, transform)
+    {
     }
 
     public override void RenderCollision(Shader shader)

@@ -15,15 +15,17 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using BCnEncoder.Decoder;
-using BCnEncoder.ImageSharp;
+using BCnEncoder.Shared;
 using BCnEncoder.Shared.ImageFiles;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse_Conversion.Textures;
 using CUE4Parse.FileProvider.Objects;
+using CUE4Parse.UE4.FMod.Nodes.Buses;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.Utils;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using Pfim;
 
 namespace FModel.ViewModels;
 
@@ -300,8 +302,10 @@ public class TabItem : ViewModel
     {
         var appendLayerNumber = false;
         var img = new CTexture[1];
-        if (texture.SourceArt?.Header.ElementCount > 0)
+        if (false)//texture.SourceArt?.Header.ElementCount > 0
         {
+            return;
+            //File.WriteAllBytes(texture.Name + ".bin", texture?.SourceArt?.Data);
             var data = texture.SourceArt.Data;
 
             byte[] pngSignature = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
@@ -317,20 +321,22 @@ public class TabItem : ViewModel
 
             if (data.Length >= ddsSignature.Length && data.AsSpan(0, ddsSignature.Length).SequenceEqual(ddsSignature))
             {
-                File.WriteAllBytes("a.bin", data);
                 using var ms = new MemoryStream(data);
-                var ddsFile = DdsFile.Load(ms);
-                var decoder = new BcDecoder();
-                using Image<Rgba32> image = decoder.DecodeToImageRgba32(ddsFile);
 
-                var info = new SKImageInfo(image.Width, image.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
+                using var pfimImage = Pfimage.FromStream(ms);
+
+                SKColorType colorType = pfimImage.Format switch
+                {
+                    ImageFormat.Rgba32 => SKColorType.Rgba8888,
+                    _ => throw new NotSupportedException($"Unsupported decompressed format: {pfimImage.Format}")
+                };
+
+                var info = new SKImageInfo(pfimImage.Width, pfimImage.Height, colorType, SKAlphaType.Unpremul);
                 var bitmap = new SKBitmap(info);
-                var pixelBytes = new byte[image.Width * image.Height * 4];
-                image.CopyPixelDataTo(pixelBytes);
-                Marshal.Copy(pixelBytes, 0, bitmap.GetPixels(), pixelBytes.Length);
+
+                Marshal.Copy(pfimImage.Data, 0, bitmap.GetPixels(), pfimImage.DataLen);
 
                 AddImage(texture.Name, texture.RenderNearestNeighbor, bitmap, save, updateUi);
-                return;
             }
         }
         if (texture is UTexture2DArray textureArray)
@@ -358,7 +364,9 @@ public class TabItem : ViewModel
 
                 img[0] = faces.All(f => f != null)
                     ? CubemapConverter.ToPanoramaFromFaces(faces[0], faces[1], faces[2], faces[3], faces[4], faces[5])
-                    : img[0].ToPanorama();
+                    : img[0] != null
+                        ? img[0].ToPanorama()
+                        : null;
             }
         }
 

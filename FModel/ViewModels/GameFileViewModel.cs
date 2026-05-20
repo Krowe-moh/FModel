@@ -7,7 +7,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 using CUE4Parse.FileProvider.Objects;
-using CUE4Parse.GameTypes.Borderlands3.Assets.Exports;
 using CUE4Parse.GameTypes.Borderlands4.Assets.Exports;
 using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
 using CUE4Parse.GameTypes.SMG.UE4.Assets.Exports.Wwise;
@@ -181,6 +180,8 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             return Task.CompletedTask;
         }
 
+        return Task.Run(() => {});
+/*
         return Task.Run(() =>
         {
             // TODO: cache and reuse packages
@@ -195,7 +196,6 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             var pointer = new FPackageIndex(pkg, mainIndex + 1).ResolvedObject;
             if (pointer?.Object is null)
                 return;
-
             var dummy = ((AbstractUePackage) pkg).ConstructObject(pointer.Class, pkg);
             ResolvedAssetType = dummy.ExportType;
 
@@ -258,8 +258,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 UNiagaraSystem or UNiagaraScriptBase or UParticleSystem => (EAssetCategory.Particle, EBulkType.None),
 
                 // Game specific assets below
-                UBorderlandsDialogObject => (EAssetCategory.Borderlands, EBulkType.None), // Borderlands 3;
-                UGbxGraphAsset or UDialogScriptData or UDialogPerformanceData => (EAssetCategory.Borderlands, EBulkType.Audio), // Borderlands 4; Borderlands 3;
+                UGbxGraphAsset => (EAssetCategory.Borderlands, EBulkType.Audio), // Borderlands 4; Borderlands 3;
                 UFaceFXAnimSet when _applicationView.CUE4Parse?.Provider.Versions.Game is EGame.GAME_Borderlands4 => (EAssetCategory.Borderlands, EBulkType.Audio), // Borderlands 4;
 
                 _ => (EAssetCategory.All, EBulkType.None),
@@ -321,7 +320,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                     Resolved |= EResolveCompute.Preview;
                     break;
             }
-        });
+        });*/
     }
 
     private Task ResolveByExtensionAsync(EResolveCompute resolve)

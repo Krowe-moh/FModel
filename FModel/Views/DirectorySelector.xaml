@@ -45,17 +45,48 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Detected Game" VerticalAlignment="Center" Margin="0 0 0 5" />
-                    <controls:FilterableComboBox Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="3"
-                                                 ItemsSource="{Binding DetectedDirectories}" Margin="0 0 0 5"
-                                                 Style="{StaticResource UComboBox}"
-                                                 adonisExtensions:WatermarkExtension.Watermark="Search for a game..."
-                                                 VerticalAlignment="Center" SelectedItem="{Binding SelectedDirectory, Mode=TwoWay}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding GameName, Converter={x:Static converters:StringToGameConverter.Instance}}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </controls:FilterableComboBox>
+                    <Grid Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="3" Margin="0 0 0 5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <controls:FilterableComboBox Grid.Column="0"
+                                                     ItemsSource="{Binding DetectedDirectories}"
+                                                     SelectedItem="{Binding SelectedDirectory, Mode=TwoWay}"
+                                                     Style="{StaticResource UComboBox}"
+                                                     adonisExtensions:WatermarkExtension.Watermark="Search for a game..."
+                                                     VerticalAlignment="Center">
+
+                            <ComboBox.ItemContainerStyle>
+                                <Style TargetType="ComboBoxItem"
+                                       BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                                    <Setter Property="IsEnabled"
+                                            Value="{Binding IsAvailable}" />
+
+                                    <Style.Triggers>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Opacity" Value="0.5" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ComboBox.ItemContainerStyle>
+
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding GameName, Converter={x:Static converters:StringToGameConverter.Instance}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </controls:FilterableComboBox>
+
+                        <Button Grid.Column="1"
+                                Width="24"
+                                Height="24"
+                                Margin="5 0 0 0"
+                                VerticalAlignment="Center"
+                                Content="✕"
+                                Command="{Binding DeleteGame}" />
+                    </Grid>
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="UE Versions" VerticalAlignment="Center" Margin="0 0 0 5" />
                     <controls:FilterableComboBox Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3" Margin="0 0 0 5"

@@ -18,7 +18,7 @@ public static class CUE4ParseExtensions
         // giving the document access to this would fix the issue and we could re-use Package instead of reloading it but it's quite a bit of work atm
 
         private const int PaginationThreshold = 50000;
-        private const int MaxExportPerPage = 100;
+        private const int MaxExportPerPage = 10000;
 
         public IPackage Package;
         public int RequestedIndex;

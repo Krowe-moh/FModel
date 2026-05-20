@@ -154,6 +154,7 @@
     <PackageReference Include="AdonisUI.ClassicTheme" Version="1.17.1" />
     <PackageReference Include="Autoupdater.NET.Official" Version="1.9.2" />
     <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+    <PackageReference Include="BCnEncoder.Net" Version="2.3.0" />
     <PackageReference Include="CSCore" Version="1.2.1.2" />
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
     <PackageReference Include="EpicManifestParser" Version="2.4.1" />
@@ -163,6 +164,7 @@
     <PackageReference Include="NVorbis" Version="0.10.5" />
     <PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" />
     <PackageReference Include="OpenTK" Version="4.9.4" />
+    <PackageReference Include="Pfim" Version="0.11.4" />
     <PackageReference Include="RestSharp" Version="113.0.0" />
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />

@@ -16,6 +16,18 @@ using Microsoft.Win32;
 
 namespace FModel.ViewModels;
 
+public class DeleteGameCommand : ViewModelCommand<GameSelectorViewModel>
+{
+    public DeleteGameCommand(GameSelectorViewModel contextViewModel) : base(contextViewModel)
+    {
+    }
+
+    public override void Execute(GameSelectorViewModel contextViewModel, object parameter)
+    {
+        contextViewModel.DeleteSelectedGame();
+    }
+}
+
 public class GameSelectorViewModel : ViewModel
 {
     public class DetectedGame
@@ -32,7 +44,7 @@ public class GameSelectorViewModel : ViewModel
         public Dictionary<string, KeyValuePair<string, string>> OverridedMapStructTypes { get; set; }
         public IList<CustomDirectory> CustomDirectories { get; set; }
     }
-
+    public DeleteGameCommand DeleteGame { get; }
     private DirectorySettings _selectedDirectory;
     public DirectorySettings SelectedDirectory
     {
@@ -44,12 +56,34 @@ public class GameSelectorViewModel : ViewModel
     public ReadOnlyObservableCollection<DirectorySettings> DetectedDirectories { get; }
     public ReadOnlyObservableCollection<EGame> UeGames { get; }
 
-    public GameSelectorViewModel(string gameDirectory)
+    private static bool IsDirectoryAvailable(DirectorySettings settings)
     {
-        _detectedDirectories = new ObservableCollection<DirectorySettings>(EnumerateDetectedGames().Where(x => x != null));
+        if (settings == null || string.IsNullOrWhiteSpace(settings.GameDirectory))
+            return false;
+
+        if (settings.GameDirectory == Constants._FN_LIVE_TRIGGER ||
+            settings.GameDirectory == Constants._VAL_LIVE_TRIGGER)
+            return true;
+
+        return Directory.Exists(settings.GameDirectory);
+    }
+
+    public GameSelectorViewModel(string gameDirectory)
+    {DeleteGame = new DeleteGameCommand(this);
+        _detectedDirectories = new ObservableCollection<DirectorySettings>(
+            EnumerateDetectedGames()
+                .Where(x => x != null)
+                .Select(x =>
+                {
+                    x.IsAvailable = IsDirectoryAvailable(x);
+                    return x;
+                }));
+
         foreach (var dir in UserSettings.Default.PerDirectory.Values.Where(x => x.IsManual))
         {
-            _detectedDirectories.Add((DirectorySettings) dir.Clone());
+            var clone = (DirectorySettings) dir.Clone();
+            clone.IsAvailable = IsDirectoryAvailable(clone);
+            _detectedDirectories.Add(clone);
         }
 
         DetectedDirectories = new ReadOnlyObservableCollection<DirectorySettings>(_detectedDirectories);
@@ -68,16 +102,28 @@ public class GameSelectorViewModel : ViewModel
     public void AddUndetectedDir(string gameName, string gameDirectory)
     {
         var setting = DirectorySettings.Default(gameName, gameDirectory, true);
+        setting.IsAvailable = IsDirectoryAvailable(setting);
+
         UserSettings.Default.PerDirectory[gameDirectory] = setting;
         _detectedDirectories.Add(setting);
+
         SelectedDirectory = DetectedDirectories.Last();
     }
 
     public void DeleteSelectedGame()
     {
-        UserSettings.Default.PerDirectory.Remove(SelectedDirectory.GameDirectory); // should not be a problem
+        if (SelectedDirectory == null)
+            return;
+
+        UserSettings.Default.PerDirectory.Remove(SelectedDirectory.GameDirectory);
+
+        var index = _detectedDirectories.IndexOf(SelectedDirectory);
+
         _detectedDirectories.Remove(SelectedDirectory);
-        SelectedDirectory = DetectedDirectories.Last();
+
+        SelectedDirectory = _detectedDirectories.Count > 0
+            ? _detectedDirectories[Math.Clamp(index - 1, 0, _detectedDirectories.Count - 1)]
+            : null;
     }
 
     private IEnumerable<EGame> EnumerateUeGames()
