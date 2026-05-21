@@ -62,6 +62,7 @@ using CUE4Parse.UE4.Wwise;
 using CUE4Parse.Utils;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
+using CUE4Parse.GameTypes.RL.Encryption.Aes;
 using EpicManifestParser;
 using EpicManifestParser.UE;
 using EpicManifestParser.ZlibngDotNetDecompressor;
@@ -739,7 +740,7 @@ public class CUE4ParseViewModel : ViewModel
             }
             case "dbc" when Provider.Versions.Game is EGame.GAME_AshesOfCreation:
             {
-                ProcessCacheDBFile(entry, updateUi, saveProperties);
+                //ProcessCacheDBFile(entry, updateUi, saveProperties);
                 break;
             }
             case "luac":
@@ -889,7 +890,7 @@ public class CUE4ParseViewModel : ViewModel
                 var directory = Path.GetDirectoryName(entry.Path) ?? "/FMOD/Desktop/";
                 foreach (var sound in extractedSounds)
                 {
-                    SaveAndPlaySound(Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio);
+                    SaveAndPlaySound(cancellationToken, Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio, updateUi);
                 }
 
                 break;
@@ -920,7 +921,7 @@ public class CUE4ParseViewModel : ViewModel
                 var extractedSounds = CriWareProvider.ExtractCriWareSounds(awbReader, archive.Name);
                 foreach (var sound in extractedSounds)
                 {
-                    SaveAndPlaySound(Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio);
+                    SaveAndPlaySound(cancellationToken, Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio, updateUi);
                 }
 
                 break;
@@ -936,7 +937,7 @@ public class CUE4ParseViewModel : ViewModel
                 var extractedSounds = CriWareProvider.ExtractCriWareSounds(acbReader, archive.Name);
                 foreach (var sound in extractedSounds)
                 {
-                    SaveAndPlaySound(Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio);
+                    SaveAndPlaySound(cancellationToken, Path.Combine(directory, sound.Name), sound.Extension, sound.Data, saveAudio, updateUi);
                 }
 
                 break;
@@ -951,15 +952,15 @@ public class CUE4ParseViewModel : ViewModel
                 // todo: CSCore.MediaFoundation.MediaFoundationException The byte stream type of the given URL is unsupported. case "aif":
             {
                 var data = Provider.SaveAsset(entry);
-                SaveAndPlaySound(entry.PathWithoutExtension, entry.Extension, data, saveAudio);
+                SaveAndPlaySound(cancellationToken, entry.PathWithoutExtension, entry.Extension, data, saveAudio, updateUi);
 
                 break;
             }
-            case "ewem": // encrypted wem file, only rocket league has this iirc
+            case "ewem" when Provider.Versions.Game is EGame.GAME_RocketLeague:
             {
                 var data = Provider.SaveAsset(entry);
                 RocketLeagueAes.Decrypt(data, 0, false, out byte[] decryptedData);
-                SaveAndPlaySound(entry.PathWithoutExtension, "wem", decryptedData, saveAudio);
+                SaveAndPlaySound(cancellationToken, entry.PathWithoutExtension, "wem", decryptedData, saveAudio, updateUi);
 
                 break;
             }
@@ -1343,12 +1344,13 @@ public class CUE4ParseViewModel : ViewModel
                 directory = Path.GetDirectoryName(atomObject.Owner.Provider.FixPath(directory));
                 foreach (var sound in extractedSounds)
                 {
-                    SaveAndPlaySound(Path.Combine(directory, sound.Name).Replace("\\", "/"), sound.Extension, sound.Data, saveAudio);
+                    SaveAndPlaySound(cancellationToken, Path.Combine(directory, sound.Name).Replace("\\", "/"), sound.Extension, sound.Data, saveAudio, updateUi);
                 }
                 return false;
             }
             case USQEXSEADSoundBank or USQEXSEADSound when (isNone || saveAudio) && pointer.Object.Value is UObject squareEnixObject:
             {
+                /*
                 var data = squareEnixObject switch
                 {
                     USQEXSEADSoundBank sqexSoundBank => sqexSoundBank.SQEXSoundBankData?.ReadDataOnce() ?? [],
@@ -1361,6 +1363,7 @@ public class CUE4ParseViewModel : ViewModel
                 {
                     SaveAndPlaySound(cancellationToken, soundPath, "wav", File.ReadAllBytes(soundPath), saveAudio, updateUi);
                 }
+                */
                 return false;
             }
             case UAkMediaAssetData when isNone || saveAudio:
