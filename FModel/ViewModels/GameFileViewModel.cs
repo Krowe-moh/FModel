@@ -49,7 +49,7 @@ using CUE4Parse.UE4.Versions;
 using CUE4Parse.Utils;
 
 using CUE4Parse_Conversion.Textures;
-
+using CUE4Parse.GameTypes.Borderlands3.Assets.Exports;
 using FModel.Framework;
 using FModel.Services;
 using FModel.Settings;
@@ -164,44 +164,52 @@ public class GameFileViewModel(GameFile asset) : ViewModel
     }
 
     private Task ResolveByPackageAsync(EResolveCompute resolve)
+{
+    if (Asset.Extension is "umap")
     {
-        if (Asset.Extension is "umap")
-        {
-            AssetCategory = EAssetCategory.World;
-            AssetActions = EBulkType.Meshes | EBulkType.Textures | EBulkType.Audio | EBulkType.Code;
-            ResolvedAssetType = "World";
-            Resolved |= EResolveCompute.Preview;
-            return Task.CompletedTask;
-        }
-        if (Asset.NameWithoutExtension.EndsWith("_BuiltData"))
-        {
-            AssetCategory = EAssetCategory.BuildData;
-            AssetActions = EBulkType.Textures;
-            ResolvedAssetType = "MapBuildDataRegistry";
-            Resolved |= EResolveCompute.Preview;
-            return Task.CompletedTask;
-        }
+        AssetCategory = EAssetCategory.World;
+        AssetActions = EBulkType.Meshes | EBulkType.Textures | EBulkType.Audio | EBulkType.Code;
+        ResolvedAssetType = "World";
+        Resolved |= EResolveCompute.Preview;
+        return Task.CompletedTask;
+    }
 
-        return Task.Run(() => {});
-/*
-        return Task.Run(() =>
+    if (Asset.NameWithoutExtension.EndsWith("_BuiltData"))
+    {
+        AssetCategory = EAssetCategory.BuildData;
+        AssetActions = EBulkType.Textures;
+        ResolvedAssetType = "MapBuildDataRegistry";
+        Resolved |= EResolveCompute.Preview;
+        return Task.CompletedTask;
+    }
+
+    // return Task.Run(() =>
+    {
+        // TODO: cache and reuse packages
+        var pkg = _applicationView.CUE4Parse?.Provider.LoadPackage(Asset);
+        if (pkg is null)
+            throw new InvalidOperationException($"Failed to load {Asset.Path} as UE package.");
+
+        var mainIndex = pkg.GetExportIndex(Asset.NameWithoutExtension, StringComparison.OrdinalIgnoreCase);
+        if (mainIndex < 0) mainIndex = pkg.GetExportIndex($"{Asset.NameWithoutExtension}_C", StringComparison.OrdinalIgnoreCase);
+        if (mainIndex < 0) mainIndex = 0;
+
+        ResolvedObject? bestPointer = null;
+        UObject? bestDummy = null;
+        var bestCategory = EAssetCategory.All;
+        var bestActions = EBulkType.None;
+
+        for (var i = 0; i < 10; i++)
         {
-            // TODO: cache and reuse packages
-            var pkg = _applicationView.CUE4Parse?.Provider.LoadPackage(Asset);
-            if (pkg is null)
-                throw new InvalidOperationException($"Failed to load {Asset.Path} as UE package.");
-
-            var mainIndex = pkg.GetExportIndex(Asset.NameWithoutExtension, StringComparison.OrdinalIgnoreCase);
-            if (mainIndex < 0) mainIndex = pkg.GetExportIndex($"{Asset.NameWithoutExtension}_C", StringComparison.OrdinalIgnoreCase);
-            if (mainIndex < 0) mainIndex = 0;
-
-            var pointer = new FPackageIndex(pkg, mainIndex + 1).ResolvedObject;
+            var pointer = new FPackageIndex(pkg, mainIndex + i + 1).ResolvedObject;
             if (pointer?.Object is null)
-                return;
-            var dummy = ((AbstractUePackage) pkg).ConstructObject(pointer.Class, pkg);
-            ResolvedAssetType = dummy.ExportType;
+                continue;
 
-            (AssetCategory, AssetActions) = dummy switch
+            var dummy = ((AbstractUePackage)pkg).ConstructObject(pointer.Class, pkg);
+            if (dummy is null)
+                continue;
+
+            var result = dummy switch
             {
                 URigVMBlueprintGeneratedClass => (EAssetCategory.RigVMBlueprintGeneratedClass, EBulkType.Code),
                 UAnimBlueprintGeneratedClass => (EAssetCategory.AnimBlueprintGeneratedClass, EBulkType.Code),
@@ -260,71 +268,100 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 UNiagaraSystem or UNiagaraScriptBase or UParticleSystem => (EAssetCategory.Particle, EBulkType.None),
 
                 // Game specific assets below
-                UBorderlandsDialogObject when GameVersion is EGame.GAME_Borderlands3 => (EAssetCategory.Borderlands, EBulkType.None), // Borderlands 3;
-                UGbxGraphAsset or UDialogScriptData or UDialogPerformanceData when GameVersion is EGame.GAME_Borderlands4 or EGame.GAME_Borderlands3 => (EAssetCategory.Borderlands, EBulkType.Audio), // Borderlands 4; Borderlands 3;
-                UFaceFXAnimSet when GameVersion is EGame.GAME_Borderlands4 => (EAssetCategory.Borderlands, EBulkType.Audio), // Borderlands 4;
+                UBorderlandsDialogObject when GameVersion is EGame.GAME_Borderlands3 => (EAssetCategory.Borderlands, EBulkType.None),
+                UGbxGraphAsset or UDialogScriptData or UDialogPerformanceData when GameVersion is EGame.GAME_Borderlands4 or EGame.GAME_Borderlands3 => (EAssetCategory.Borderlands, EBulkType.Audio),
+                UFaceFXAnimSet when GameVersion is EGame.GAME_Borderlands4 => (EAssetCategory.Borderlands, EBulkType.Audio),
 
                 _ => (EAssetCategory.All, EBulkType.None),
             };
 
-            switch (AssetCategory)
+            if (result.Item1 != EAssetCategory.All || bestDummy is null)
             {
-                case EAssetCategory.Texture when pointer.Object.Value is UTexture texture:
-                {
-                    if (!resolve.HasFlag(EResolveCompute.Preview))
-                        break;
+                bestPointer = pointer;
+                bestDummy = dummy;
+                bestCategory = result.Item1;
+                bestActions = result.Item2;
 
-                    if (pointer.Object.Value is UTexture2DArray textureArray && textureArray.GetFirstMip() is { SizeZ: > 1 } firstMip)
-                        NumTextures = firstMip.SizeZ;
-
-                    var img = texture.Decode(MaxPreviewSize, UserSettings.Default.CurrentDir.TexturePlatform);
-                    if (img != null)
-                    {
-                        using var bitmap = img.ToSkBitmap();
-                        using var image = bitmap.Encode(SKEncodedImageFormat.Png, 100);
-                        SetPreviewImage(image);
-                    }
-                    break;
-                }
-                case EAssetCategory.ItemDefinitionBase:
-                    if (!resolve.HasFlag(EResolveCompute.Preview))
-                        break;
-
-                    if (pointer.Object.Value is UItemDefinitionBase itemDef)
-                    {
-                        if (LookupPreview(itemDef.DataList)) break;
-
-                        if (itemDef is UAthenaPickaxeItemDefinition pickaxe && pickaxe.WeaponDefinition.TryLoad(out UItemDefinitionBase weaponDef))
-                        {
-                            LookupPreview(weaponDef.DataList);
-                        }
-
-                        bool LookupPreview(FInstancedStruct[] dataList)
-                        {
-                            foreach (var data in dataList)
-                            {
-                                if (!data.NonConstStruct.TryGetValue(out FSoftObjectPath icon, "Icon", "LargeIcon") ||
-                                    !icon.TryLoad<UTexture2D>(out var texture))
-                                    continue;
-
-                                var img = texture.Decode(MaxPreviewSize, UserSettings.Default.CurrentDir.TexturePlatform);
-                                if (img == null) return false;
-
-                                using var bitmap = img.ToSkBitmap();
-                                using var image = bitmap.Encode(SKEncodedImageFormat.Png, 100);
-                                SetPreviewImage(image);
-                                return true;
-                            }
-                            return false;
-                        }
-                    }
-                    break;
-                default:
-                    Resolved |= EResolveCompute.Preview;
+                if (result.Item1 != EAssetCategory.All)
                     break;
             }
-        });*/
+        }
+
+        if (bestPointer?.Object is null || bestDummy is null)
+            return Task.CompletedTask;
+
+        ResolvedAssetType = bestDummy.ExportType;
+        AssetCategory = bestCategory;
+        AssetActions = bestActions;
+
+        switch (AssetCategory)
+        {
+            case EAssetCategory.Texture when bestPointer.Object.Value is UTexture texture:
+            {
+                if (!resolve.HasFlag(EResolveCompute.Preview))
+                    break;
+
+                if (bestPointer.Object.Value is UTexture2DArray textureArray && textureArray.GetFirstMip() is { SizeZ: > 1 } firstMip)
+                    NumTextures = firstMip.SizeZ;
+
+                var img = texture.Decode(MaxPreviewSize, UserSettings.Default.CurrentDir.TexturePlatform);
+                if (img != null)
+                {
+                    using var bitmap = img.ToSkBitmap();
+                    using var image = bitmap.Encode(SKEncodedImageFormat.Png, 100);
+                    SetPreviewImage(image);
+                }
+
+                break;
+            }
+
+            case EAssetCategory.ItemDefinitionBase:
+                if (!resolve.HasFlag(EResolveCompute.Preview))
+                    break;
+
+                if (bestPointer.Object.Value is UItemDefinitionBase itemDef)
+                {
+                    if (LookupPreview(itemDef.DataList))
+                        break;
+
+                    if (itemDef is UAthenaPickaxeItemDefinition pickaxe &&
+                        pickaxe.WeaponDefinition.TryLoad(out UItemDefinitionBase weaponDef))
+                    {
+                        LookupPreview(weaponDef.DataList);
+                    }
+
+                    bool LookupPreview(FInstancedStruct[] dataList)
+                    {
+                        foreach (var data in dataList)
+                        {
+                            if (!data.NonConstStruct.TryGetValue(out FSoftObjectPath icon, "Icon", "LargeIcon") ||
+                                !icon.TryLoad<UTexture2D>(out var texture))
+                                continue;
+
+                            var img = texture.Decode(MaxPreviewSize, UserSettings.Default.CurrentDir.TexturePlatform);
+                            if (img == null)
+                                return false;
+
+                            using var bitmap = img.ToSkBitmap();
+                            using var image = bitmap.Encode(SKEncodedImageFormat.Png, 100);
+                            SetPreviewImage(image);
+                            return true;
+                        }
+
+                        return false;
+                    }
+                }
+
+                break;
+
+            default:
+                Resolved |= EResolveCompute.Preview;
+                break;
+        }
     }
+
+    return Task.CompletedTask;
+}
 
     private Task ResolveByExtensionAsync(EResolveCompute resolve)
     {
@@ -368,6 +405,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             case "flac":
             case "at9":
             case "wem":
+            case "ewem":
             case "ogg":
                 AssetCategory = EAssetCategory.Audio;
                 AssetActions = EBulkType.Audio;

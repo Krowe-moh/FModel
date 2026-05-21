@@ -628,7 +628,6 @@ public class Renderer : IDisposable
 
     private void LoadMaterialInstance(UMaterialInstance original, Transform transform, bool forceShow = false)
     {
-        // Try to load the editor cube as a fallback
         bool isLoaded = Utils.TryLoadObject("Engine/Content/BasicShapes/Cube.Cube", out UStaticMesh editorCube);
         if (!isLoaded)
         {
@@ -637,20 +636,17 @@ public class Renderer : IDisposable
 
         if (!isLoaded)
         {
-            return; // If the fallback failed, return early
+            return;
         }
 
         var guid = editorCube.LightingGuid;
 
-        // Check if model is already present in the Options.Models
         if (Options.TryGetModel(guid, out var model))
         {
-            // Swap the material if the model is found
             model.AddInstance(transform);
             model.Materials[0].SwapMaterial(original);
             Application.Current.Dispatcher.Invoke(() => model.Materials[0].Setup(Options, model.UvCount));
 
-            // Optionally force show the model if requested
             if (forceShow)
             {
                 foreach (var section in model.Sections)
@@ -662,23 +658,18 @@ public class Renderer : IDisposable
             return;
         }
 
-        // Convert the editor cube to a mesh if it's not already done
         if (!editorCube.TryConvert(out var mesh))
         {
-            return; // Early return if conversion fails
+            return;
         }
 
-        // Create the new StaticModel instance and add it to Options.Models
         model = new StaticModel(editorCube, mesh, transform);
         model.AddInstance(transform);
 
-        // Add the new model to Options.Models
         Options.Models[guid] = model;
 
-        // Select the newly added model
         Options.SelectModel(guid);
 
-        // Optionally force show the model if requested
         if (forceShow)
         {
             foreach (var section in model.Sections)
@@ -693,16 +684,12 @@ public class Renderer : IDisposable
     {
         var guid = new FGuid((uint)original.GetFullName().GetHashCode());
 
-        // Check if the model already exists in Options.Models
         if (Options.Models.ContainsKey(guid) || !original.TryConvert(out var mesh)) return;
 
-        // Create skeletal model instance
         var skeletalModel = new SkeletalModel(original, mesh, transform);
 
-        // Add instance (similar to ProcessMesh)
         Options.Models[guid] = skeletalModel;
 
-        // Optionally force show the model
         if (forceShow)
         {
             foreach (var section in skeletalModel.Sections)
@@ -711,7 +698,7 @@ public class Renderer : IDisposable
             }
         }
 
-        Options.SelectModel(guid); // Select the newly added model (if needed)
+        Options.SelectModel(guid);
         skeletalModel.AddInstance(transform);
     }
 

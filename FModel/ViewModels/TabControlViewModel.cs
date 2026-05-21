@@ -299,7 +299,7 @@ public class TabItem : ViewModel
         var appendLayerNumber = false;
         var img = new CTexture[1];
         if (false)//texture.SourceArt?.Header.ElementCount > 0
-        {
+        { // ignore this yap
             return;
             //File.WriteAllBytes(texture.Name + ".bin", texture?.SourceArt?.Data);
             var data = texture.SourceArt.Data;

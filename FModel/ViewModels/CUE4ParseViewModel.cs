@@ -62,6 +62,7 @@ using CUE4Parse.UE4.Wwise;
 using CUE4Parse.Utils;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
+using CUE4Parse.GameTypes.AoC.Objects;
 using CUE4Parse.GameTypes.RL.Encryption.Aes;
 using EpicManifestParser;
 using EpicManifestParser.UE;
@@ -740,7 +741,7 @@ public class CUE4ParseViewModel : ViewModel
             }
             case "dbc" when Provider.Versions.Game is EGame.GAME_AshesOfCreation:
             {
-                //ProcessCacheDBFile(entry, updateUi, saveProperties);
+                ProcessCacheDBFile(entry, updateUi, saveProperties);
                 break;
             }
             case "luac":
@@ -1054,8 +1055,7 @@ public class CUE4ParseViewModel : ViewModel
                 if (!UnknownExtensions.Contains(entry.Extension))
                 {
                     UnknownExtensions.Add(entry.Extension);
-                    FLogger.Append(ELog.Warning, () =>
-                        FLogger.Text($"There are some packages with an unknown type {entry.Extension}. Check Log file for a full list.", Constants.WHITE, true));
+                    FLogger.Append(ELog.Warning, () => FLogger.Text($"There are some packages with an unknown type {entry.Extension}. Check Log file for a full list.", Constants.WHITE, true));
                 }
 
                 break;
@@ -1125,6 +1125,30 @@ public class CUE4ParseViewModel : ViewModel
 
                 TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(datfile, Formatting.Indented), saveProperties, updateUi);
             }
+        }
+
+        // Ashhes of Creation
+        void ProcessCacheDBFile(GameFile entry, bool updateUi, bool saveProperties)
+        {
+            var data = entry.Read();
+            var dbc = new FAoCDBCReader(data, Provider.MappingsForGame, Provider.Versions);
+            for (var i = 0; i < dbc.Chunks.Length; i++)
+            {
+                if (!dbc.TryReadChunk(i, out var category, out var files))
+                {
+                    Log.Warning("Couldn't read {i} chuck in AoC CacheDB", i);
+                    continue;
+                }
+                var fileName = Path.ChangeExtension(category, ".json");
+                var directory = Path.Combine(UserSettings.Default.PropertiesDirectory,
+                    UserSettings.Default.KeepDirectoryStructure ? entry.Directory : "", entry.Name, fileName).Replace('\\', '/');
+
+                Directory.CreateDirectory(directory.SubstringBeforeLast('/'));
+
+                File.WriteAllText(directory, JsonConvert.SerializeObject(files, Formatting.Indented));
+            }
+
+            TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(dbc, Formatting.Indented), saveProperties, updateUi);
         }
     }
 

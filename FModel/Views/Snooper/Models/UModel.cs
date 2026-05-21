@@ -249,7 +249,7 @@ public abstract class UModel : IRenderableModel
     public virtual void Render(Shader shader, Texture checker = null, bool outline = false)
     {
         if (outline) GL.Disable(EnableCap.DepthTest);
-        //if (IsTwoSided)
+        //if (IsTwoSided)  // currently disabled as this isn't correctly detected for UE3
             GL.Disable(EnableCap.CullFace);
         if (IsSelected)
         {
@@ -307,7 +307,7 @@ public abstract class UModel : IRenderableModel
 
     public void PickingRender(Shader shader)
     {
-        //if (IsTwoSided)
+        //if (IsTwoSided) // currently disabled as this isn't correctly detected for UE3
             GL.Disable(EnableCap.CullFace);
         if (this is SkeletalModel skeletalModel) skeletalModel.Render(shader);
         if (this is SplineModel splineModel) splineModel.Render(shader);
