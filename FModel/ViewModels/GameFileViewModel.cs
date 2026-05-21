@@ -162,206 +162,204 @@ public class GameFileViewModel(GameFile asset) : ViewModel
 
         return ResolveByPackageAsync(resolve);
     }
-
+    
     private Task ResolveByPackageAsync(EResolveCompute resolve)
-{
-    if (Asset.Extension is "umap")
     {
-        AssetCategory = EAssetCategory.World;
-        AssetActions = EBulkType.Meshes | EBulkType.Textures | EBulkType.Audio | EBulkType.Code;
-        ResolvedAssetType = "World";
-        Resolved |= EResolveCompute.Preview;
-        return Task.CompletedTask;
-    }
-
-    if (Asset.NameWithoutExtension.EndsWith("_BuiltData"))
-    {
-        AssetCategory = EAssetCategory.BuildData;
-        AssetActions = EBulkType.Textures;
-        ResolvedAssetType = "MapBuildDataRegistry";
-        Resolved |= EResolveCompute.Preview;
-        return Task.CompletedTask;
-    }
-
-    // return Task.Run(() =>
-    {
-        // TODO: cache and reuse packages
-        var pkg = _applicationView.CUE4Parse?.Provider.LoadPackage(Asset);
-        if (pkg is null)
-            throw new InvalidOperationException($"Failed to load {Asset.Path} as UE package.");
-
-        var mainIndex = pkg.GetExportIndex(Asset.NameWithoutExtension, StringComparison.OrdinalIgnoreCase);
-        if (mainIndex < 0) mainIndex = pkg.GetExportIndex($"{Asset.NameWithoutExtension}_C", StringComparison.OrdinalIgnoreCase);
-        if (mainIndex < 0) mainIndex = 0;
-
-        ResolvedObject? bestPointer = null;
-        UObject? bestDummy = null;
-        var bestCategory = EAssetCategory.All;
-        var bestActions = EBulkType.None;
-
-        for (var i = 0; i < 10; i++)
+        if (Asset.Extension is "umap")
         {
-            var pointer = new FPackageIndex(pkg, mainIndex + i + 1).ResolvedObject;
-            if (pointer?.Object is null)
-                continue;
-
-            var dummy = ((AbstractUePackage)pkg).ConstructObject(pointer.Class, pkg);
-            if (dummy is null)
-                continue;
-
-            var result = dummy switch
-            {
-                URigVMBlueprintGeneratedClass => (EAssetCategory.RigVMBlueprintGeneratedClass, EBulkType.Code),
-                UAnimBlueprintGeneratedClass => (EAssetCategory.AnimBlueprintGeneratedClass, EBulkType.Code),
-                UWidgetBlueprintGeneratedClass => (EAssetCategory.WidgetBlueprintGeneratedClass, EBulkType.Code),
-                UBlueprintGeneratedClass or UFunction => (EAssetCategory.BlueprintGeneratedClass, EBulkType.Code),
-                UUserDefinedEnum => (EAssetCategory.UserDefinedEnum, EBulkType.None),
-                UUserDefinedStruct => (EAssetCategory.UserDefinedStruct, EBulkType.Code),
-                UBlueprintCore => (EAssetCategory.Blueprint, EBulkType.Code),
-                UClassCookedMetaData or UStructCookedMetaData or UEnumCookedMetaData => (EAssetCategory.CookedMetaData, EBulkType.None),
-
-                UStaticMesh => (EAssetCategory.StaticMesh, EBulkType.Meshes),
-                USkeletalMesh => (EAssetCategory.SkeletalMesh, EBulkType.Meshes),
-                UCustomizableObject => (EAssetCategory.CustomizableObject, EBulkType.None),
-                UNaniteDisplacedMesh => (EAssetCategory.NaniteDisplacedMesh, EBulkType.None),
-
-                UTexture => (EAssetCategory.Texture, EBulkType.Textures),
-
-                UMaterialInterface => (EAssetCategory.Material, EBulkType.None),
-                UMaterialInterfaceEditorOnlyData => (EAssetCategory.MaterialEditorData, EBulkType.None),
-                UMaterialFunction => (EAssetCategory.MaterialFunction, EBulkType.None),
-                UMaterialFunctionEditorOnlyData => (EAssetCategory.MaterialFunctionEditorData, EBulkType.None),
-                UMaterialParameterCollection => (EAssetCategory.MaterialParameterCollection, EBulkType.None),
-
-                UAnimationAsset => (EAssetCategory.Animation, EBulkType.Animations),
-                USkeleton => (EAssetCategory.Skeleton, EBulkType.Meshes),
-                URig => (EAssetCategory.Rig, EBulkType.None),
-
-                UWorld => (EAssetCategory.World, EBulkType.Meshes | EBulkType.Textures | EBulkType.Audio | EBulkType.Code),
-                UMapBuildDataRegistry => (EAssetCategory.BuildData, EBulkType.Textures),
-                ULevelSequence => (EAssetCategory.LevelSequence, EBulkType.Code),
-                UFoliageType => (EAssetCategory.Foliage, EBulkType.None),
-
-                UItemDefinitionBase => (EAssetCategory.ItemDefinitionBase, EBulkType.Textures),
-                UDataAsset or UDataTable or UCurveTable or UStringTable => (EAssetCategory.Data, EBulkType.None),
-                UCurveBase => (EAssetCategory.CurveBase, EBulkType.None),
-                UPhysicsAsset => (EAssetCategory.PhysicsAsset, EBulkType.None),
-                UObjectRedirector => (EAssetCategory.ObjectRedirector, EBulkType.None),
-                UPhysicalMaterial => (EAssetCategory.PhysicalMaterial, EBulkType.None),
-
-                USoundAtomCue or UAkAudioEvent or USoundCue or UFMODEvent
-                    or UAkAssetData or UAkAssetPlatformData => (EAssetCategory.AudioEvent, EBulkType.Audio),
-
-                UFMODBankLookup => (EAssetCategory.Data, EBulkType.None),
-
-                UFMODBus or UFMODSnapshot or UFMODSnapshotReverb or UFMODVCA or USQEXSEADSoundAttenuation => (EAssetCategory.Audio, EBulkType.None),
-
-                UFMODBank or UAkAudioBank or UAtomWaveBank or UAkInitBank or USQEXSEADSoundBank => (EAssetCategory.SoundBank, EBulkType.Audio),
-
-                UWwiseAssetLibrary or USoundBase or UAkMediaAssetData or UAtomCueSheet
-                    or USoundAtomCueSheet or UAkAudioType or UExternalSource or UExternalSourceBank
-                    or UAkMediaAsset => (EAssetCategory.Audio, EBulkType.Audio),
-
-                UFileMediaSource => (EAssetCategory.Video, EBulkType.None),
-                UFont or UFontFace or USMGLocaleFontUMG => (EAssetCategory.Font, EBulkType.None),
-
-                UNiagaraSystem or UNiagaraScriptBase or UParticleSystem => (EAssetCategory.Particle, EBulkType.None),
-
-                // Game specific assets below
-                UBorderlandsDialogObject when GameVersion is EGame.GAME_Borderlands3 => (EAssetCategory.Borderlands, EBulkType.None),
-                UGbxGraphAsset or UDialogScriptData or UDialogPerformanceData when GameVersion is EGame.GAME_Borderlands4 or EGame.GAME_Borderlands3 => (EAssetCategory.Borderlands, EBulkType.Audio),
-                UFaceFXAnimSet when GameVersion is EGame.GAME_Borderlands4 => (EAssetCategory.Borderlands, EBulkType.Audio),
-
-                _ => (EAssetCategory.All, EBulkType.None),
-            };
-
-            if (result.Item1 != EAssetCategory.All || bestDummy is null)
-            {
-                bestPointer = pointer;
-                bestDummy = dummy;
-                bestCategory = result.Item1;
-                bestActions = result.Item2;
-
-                if (result.Item1 != EAssetCategory.All)
-                    break;
-            }
+            AssetCategory = EAssetCategory.World;
+            AssetActions = EBulkType.Meshes | EBulkType.Textures | EBulkType.Audio | EBulkType.Code;
+            ResolvedAssetType = "World";
+            Resolved |= EResolveCompute.Preview;
+            return Task.CompletedTask;
         }
 
-        if (bestPointer?.Object is null || bestDummy is null)
-            return Task.CompletedTask;
-
-        ResolvedAssetType = bestDummy.ExportType;
-        AssetCategory = bestCategory;
-        AssetActions = bestActions;
-
-        switch (AssetCategory)
+        if (Asset.NameWithoutExtension.EndsWith("_BuiltData"))
         {
-            case EAssetCategory.Texture when bestPointer.Object.Value is UTexture texture:
+            AssetCategory = EAssetCategory.BuildData;
+            AssetActions = EBulkType.Textures;
+            ResolvedAssetType = "MapBuildDataRegistry";
+            Resolved |= EResolveCompute.Preview;
+            return Task.CompletedTask;
+        }
+
+        return Task.Run(() =>
+        {
+            // TODO: cache and reuse packages
+            var pkg = _applicationView.CUE4Parse?.Provider.LoadPackage(Asset);
+            if (pkg is null)
+                throw new InvalidOperationException($"Failed to load {Asset.Path} as UE package.");
+
+            var mainIndex = pkg.GetExportIndex(Asset.NameWithoutExtension, StringComparison.OrdinalIgnoreCase);
+            if (mainIndex < 0) mainIndex = pkg.GetExportIndex($"{Asset.NameWithoutExtension}_C", StringComparison.OrdinalIgnoreCase);
+            if (mainIndex < 0) mainIndex = 0;
+
+            ResolvedObject? bestPointer = null;
+            UObject? bestDummy = null;
+            var bestCategory = EAssetCategory.All;
+            var bestActions = EBulkType.None;
+
+            for (var i = 0; i < 10; i++)
             {
-                if (!resolve.HasFlag(EResolveCompute.Preview))
-                    break;
+                var pointer = new FPackageIndex(pkg, mainIndex + i + 1).ResolvedObject;
+                if (pointer?.Object is null)
+                    continue;
 
-                if (bestPointer.Object.Value is UTexture2DArray textureArray && textureArray.GetFirstMip() is { SizeZ: > 1 } firstMip)
-                    NumTextures = firstMip.SizeZ;
+                var dummy = ((AbstractUePackage) pkg).ConstructObject(pointer.Class, pkg);
+                if (dummy is null)
+                    continue;
 
-                var img = texture.Decode(MaxPreviewSize, UserSettings.Default.CurrentDir.TexturePlatform);
-                if (img != null)
+                var result = dummy switch
                 {
-                    using var bitmap = img.ToSkBitmap();
-                    using var image = bitmap.Encode(SKEncodedImageFormat.Png, 100);
-                    SetPreviewImage(image);
-                }
+                    URigVMBlueprintGeneratedClass => (EAssetCategory.RigVMBlueprintGeneratedClass, EBulkType.Code),
+                    UAnimBlueprintGeneratedClass => (EAssetCategory.AnimBlueprintGeneratedClass, EBulkType.Code),
+                    UWidgetBlueprintGeneratedClass => (EAssetCategory.WidgetBlueprintGeneratedClass, EBulkType.Code),
+                    UBlueprintGeneratedClass or UFunction => (EAssetCategory.BlueprintGeneratedClass, EBulkType.Code),
+                    UUserDefinedEnum => (EAssetCategory.UserDefinedEnum, EBulkType.None),
+                    UUserDefinedStruct => (EAssetCategory.UserDefinedStruct, EBulkType.Code),
+                    UBlueprintCore => (EAssetCategory.Blueprint, EBulkType.Code),
+                    UClassCookedMetaData or UStructCookedMetaData or UEnumCookedMetaData => (EAssetCategory.CookedMetaData, EBulkType.None),
 
-                break;
+                    UStaticMesh => (EAssetCategory.StaticMesh, EBulkType.Meshes),
+                    USkeletalMesh => (EAssetCategory.SkeletalMesh, EBulkType.Meshes),
+                    UCustomizableObject => (EAssetCategory.CustomizableObject, EBulkType.None),
+                    UNaniteDisplacedMesh => (EAssetCategory.NaniteDisplacedMesh, EBulkType.None),
+
+                    UTexture => (EAssetCategory.Texture, EBulkType.Textures),
+
+                    UMaterialInterface => (EAssetCategory.Material, EBulkType.None),
+                    UMaterialInterfaceEditorOnlyData => (EAssetCategory.MaterialEditorData, EBulkType.None),
+                    UMaterialFunction => (EAssetCategory.MaterialFunction, EBulkType.None),
+                    UMaterialFunctionEditorOnlyData => (EAssetCategory.MaterialFunctionEditorData, EBulkType.None),
+                    UMaterialParameterCollection => (EAssetCategory.MaterialParameterCollection, EBulkType.None),
+
+                    UAnimationAsset => (EAssetCategory.Animation, EBulkType.Animations),
+                    USkeleton => (EAssetCategory.Skeleton, EBulkType.Meshes),
+                    URig => (EAssetCategory.Rig, EBulkType.None),
+
+                    UWorld => (EAssetCategory.World, EBulkType.Meshes | EBulkType.Textures | EBulkType.Audio | EBulkType.Code),
+                    UMapBuildDataRegistry => (EAssetCategory.BuildData, EBulkType.Textures),
+                    ULevelSequence => (EAssetCategory.LevelSequence, EBulkType.Code),
+                    UFoliageType => (EAssetCategory.Foliage, EBulkType.None),
+
+                    UItemDefinitionBase => (EAssetCategory.ItemDefinitionBase, EBulkType.Textures),
+                    UDataAsset or UDataTable or UCurveTable or UStringTable => (EAssetCategory.Data, EBulkType.None),
+                    UCurveBase => (EAssetCategory.CurveBase, EBulkType.None),
+                    UPhysicsAsset => (EAssetCategory.PhysicsAsset, EBulkType.None),
+                    UObjectRedirector => (EAssetCategory.ObjectRedirector, EBulkType.None),
+                    UPhysicalMaterial => (EAssetCategory.PhysicalMaterial, EBulkType.None),
+
+                    USoundAtomCue or UAkAudioEvent or USoundCue or UFMODEvent
+                        or UAkAssetData or UAkAssetPlatformData => (EAssetCategory.AudioEvent, EBulkType.Audio),
+
+                    UFMODBankLookup => (EAssetCategory.Data, EBulkType.None),
+
+                    UFMODBus or UFMODSnapshot or UFMODSnapshotReverb or UFMODVCA or USQEXSEADSoundAttenuation => (EAssetCategory.Audio, EBulkType.None),
+
+                    UFMODBank or UAkAudioBank or UAtomWaveBank or UAkInitBank or USQEXSEADSoundBank => (EAssetCategory.SoundBank, EBulkType.Audio),
+
+                    UWwiseAssetLibrary or USoundBase or UAkMediaAssetData or UAtomCueSheet
+                        or USoundAtomCueSheet or UAkAudioType or UExternalSource or UExternalSourceBank
+                        or UAkMediaAsset => (EAssetCategory.Audio, EBulkType.Audio),
+
+                    UFileMediaSource => (EAssetCategory.Video, EBulkType.None),
+                    UFont or UFontFace or USMGLocaleFontUMG => (EAssetCategory.Font, EBulkType.None),
+
+                    UNiagaraSystem or UNiagaraScriptBase or UParticleSystem => (EAssetCategory.Particle, EBulkType.None),
+
+                    // Game specific assets below
+                    UBorderlandsDialogObject when GameVersion is EGame.GAME_Borderlands3 => (EAssetCategory.Borderlands, EBulkType.None),
+                    UGbxGraphAsset or UDialogScriptData or UDialogPerformanceData when GameVersion is EGame.GAME_Borderlands4 or EGame.GAME_Borderlands3 => (EAssetCategory.Borderlands, EBulkType.Audio),
+                    UFaceFXAnimSet when GameVersion is EGame.GAME_Borderlands4 => (EAssetCategory.Borderlands, EBulkType.Audio),
+
+                    _ => (EAssetCategory.All, EBulkType.None),
+                };
+
+                if (result.Item1 != EAssetCategory.All || bestDummy is null)
+                {
+                    bestPointer = pointer;
+                    bestDummy = dummy;
+                    bestCategory = result.Item1;
+                    bestActions = result.Item2;
+
+                    if (result.Item1 != EAssetCategory.All)
+                        break;
+                }
             }
 
-            case EAssetCategory.ItemDefinitionBase:
-                if (!resolve.HasFlag(EResolveCompute.Preview))
-                    break;
+            if (bestPointer?.Object is null || bestDummy is null)
+                return;
 
-                if (bestPointer.Object.Value is UItemDefinitionBase itemDef)
+            ResolvedAssetType = bestDummy.ExportType;
+            AssetCategory = bestCategory;
+            AssetActions = bestActions;
+
+            switch (AssetCategory)
+            {
+                case EAssetCategory.Texture when bestPointer.Object.Value is UTexture texture:
                 {
-                    if (LookupPreview(itemDef.DataList))
+                    if (!resolve.HasFlag(EResolveCompute.Preview))
                         break;
 
-                    if (itemDef is UAthenaPickaxeItemDefinition pickaxe &&
-                        pickaxe.WeaponDefinition.TryLoad(out UItemDefinitionBase weaponDef))
+                    if (bestPointer.Object.Value is UTexture2DArray textureArray && textureArray.GetFirstMip() is { SizeZ: > 1 } firstMip)
+                        NumTextures = firstMip.SizeZ;
+
+                    var img = texture.Decode(MaxPreviewSize, UserSettings.Default.CurrentDir.TexturePlatform);
+                    if (img != null)
                     {
-                        LookupPreview(weaponDef.DataList);
+                        using var bitmap = img.ToSkBitmap();
+                        using var image = bitmap.Encode(SKEncodedImageFormat.Png, 100);
+                        SetPreviewImage(image);
                     }
 
-                    bool LookupPreview(FInstancedStruct[] dataList)
-                    {
-                        foreach (var data in dataList)
-                        {
-                            if (!data.NonConstStruct.TryGetValue(out FSoftObjectPath icon, "Icon", "LargeIcon") ||
-                                !icon.TryLoad<UTexture2D>(out var texture))
-                                continue;
-
-                            var img = texture.Decode(MaxPreviewSize, UserSettings.Default.CurrentDir.TexturePlatform);
-                            if (img == null)
-                                return false;
-
-                            using var bitmap = img.ToSkBitmap();
-                            using var image = bitmap.Encode(SKEncodedImageFormat.Png, 100);
-                            SetPreviewImage(image);
-                            return true;
-                        }
-
-                        return false;
-                    }
+                    break;
                 }
 
-                break;
+                case EAssetCategory.ItemDefinitionBase:
+                    if (!resolve.HasFlag(EResolveCompute.Preview))
+                        break;
 
-            default:
-                Resolved |= EResolveCompute.Preview;
-                break;
-        }
+                    if (bestPointer.Object.Value is UItemDefinitionBase itemDef)
+                    {
+                        if (LookupPreview(itemDef.DataList))
+                            break;
+
+                        if (itemDef is UAthenaPickaxeItemDefinition pickaxe &&
+                            pickaxe.WeaponDefinition.TryLoad(out UItemDefinitionBase weaponDef))
+                        {
+                            LookupPreview(weaponDef.DataList);
+                        }
+
+                        bool LookupPreview(FInstancedStruct[] dataList)
+                        {
+                            foreach (var data in dataList)
+                            {
+                                if (!data.NonConstStruct.TryGetValue(out FSoftObjectPath icon, "Icon", "LargeIcon") ||
+                                    !icon.TryLoad<UTexture2D>(out var texture))
+                                    continue;
+
+                                var img = texture.Decode(MaxPreviewSize, UserSettings.Default.CurrentDir.TexturePlatform);
+                                if (img == null)
+                                    return false;
+
+                                using var bitmap = img.ToSkBitmap();
+                                using var image = bitmap.Encode(SKEncodedImageFormat.Png, 100);
+                                SetPreviewImage(image);
+                                return true;
+                            }
+
+                            return false;
+                        }
+                    }
+
+                    break;
+
+                default:
+                    Resolved |= EResolveCompute.Preview;
+                    break;
+            }
+        });
     }
-
-    return Task.CompletedTask;
-}
 
     private Task ResolveByExtensionAsync(EResolveCompute resolve)
     {
