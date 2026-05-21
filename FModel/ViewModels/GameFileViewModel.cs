@@ -50,6 +50,7 @@ using CUE4Parse.Utils;
 
 using CUE4Parse_Conversion.Textures;
 using CUE4Parse.GameTypes.Borderlands3.Assets.Exports;
+using CUE4Parse.UE4.Assets.Exports.Sound.Node;
 using FModel.Framework;
 using FModel.Services;
 using FModel.Settings;
@@ -162,7 +163,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
 
         return ResolveByPackageAsync(resolve);
     }
-    
+
     private Task ResolveByPackageAsync(EResolveCompute resolve)
     {
         if (Asset.Extension is "umap")
@@ -227,7 +228,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
 
                     UTexture => (EAssetCategory.Texture, EBulkType.Textures),
 
-                    UMaterialInterface => (EAssetCategory.Material, EBulkType.None),
+                    UMaterialInterface or UMaterialExpression => (EAssetCategory.Material, EBulkType.None),
                     UMaterialInterfaceEditorOnlyData => (EAssetCategory.MaterialEditorData, EBulkType.None),
                     UMaterialFunction => (EAssetCategory.MaterialFunction, EBulkType.None),
                     UMaterialFunctionEditorOnlyData => (EAssetCategory.MaterialFunctionEditorData, EBulkType.None),
@@ -258,7 +259,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
 
                     UFMODBank or UAkAudioBank or UAtomWaveBank or UAkInitBank or USQEXSEADSoundBank => (EAssetCategory.SoundBank, EBulkType.Audio),
 
-                    UWwiseAssetLibrary or USoundBase or UAkMediaAssetData or UAtomCueSheet
+                    UWwiseAssetLibrary or USoundBase or USoundClass or USoundNodeWave or UAkMediaAssetData or UAtomCueSheet
                         or USoundAtomCueSheet or UAkAudioType or UExternalSource or UExternalSourceBank
                         or UAkMediaAsset => (EAssetCategory.Audio, EBulkType.Audio),
 

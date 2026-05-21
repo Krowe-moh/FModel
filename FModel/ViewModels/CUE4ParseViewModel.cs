@@ -344,7 +344,7 @@ public class CUE4ParseViewModel : ViewModel
             }
 
             Provider.Initialize();
-            //_wwiseProviderLazy = new Lazy<WwiseProvider>(() => new WwiseProvider(Provider, UserSettings.Default.GameDirectory));
+            _wwiseProviderLazy = new Lazy<WwiseProvider>(() => new WwiseProvider(Provider, UserSettings.Default.GameDirectory));
             _fmodProviderLazy = new Lazy<FModProvider>(() => new FModProvider(Provider, UserSettings.Default.GameDirectory));
             _criWareProviderLazy = new Lazy<CriWareProvider>(() => new CriWareProvider(Provider, UserSettings.Default.GameDirectory));
             Log.Information($"{Provider.Versions.Game} ({Provider.Versions.Platform}) | Archives: x{Provider.UnloadedVfs.Count} | AES: x{Provider.RequiredKeys.Count} | Loose Files: x{Provider.Files.Count}");
@@ -562,11 +562,10 @@ public class CUE4ParseViewModel : ViewModel
         if (!Provider.ProjectName.Equals("fortnitegame", StringComparison.OrdinalIgnoreCase) || HotfixedResourcesDone) return Task.CompletedTask;
         return Task.Run(() =>
         {
-            //var hotfixes = ApplicationService.ApiEndpointView.CentralApi.GetHotfixes(CancellationToken.None, Provider.GetLanguageCode(UserSettings.Default.AssetLanguage));
-            //if (hotfixes == null)
-            return;
+            var hotfixes = ApplicationService.ApiEndpointView.DillyApi.GetHotfixes(CancellationToken.None, Provider.GetLanguageCode(UserSettings.Default.AssetLanguage));
+            if (hotfixes == null) return;
 
-            Provider.Internationalization.Override(null);
+            Provider.Internationalization.Override(hotfixes);
             HotfixedResourcesDone = true;
         });
     }
@@ -800,6 +799,7 @@ public class CUE4ParseViewModel : ViewModel
             case "css":
             case "csv":
             case "pem":
+            case "tsv":
             case "tps":
             case "tgc": // State of Decay 2
             case "cpp":
@@ -1055,7 +1055,8 @@ public class CUE4ParseViewModel : ViewModel
                 if (!UnknownExtensions.Contains(entry.Extension))
                 {
                     UnknownExtensions.Add(entry.Extension);
-                    FLogger.Append(ELog.Warning, () => FLogger.Text($"There are some packages with an unknown type {entry.Extension}. Check Log file for a full list.", Constants.WHITE, true));
+                    FLogger.Append(ELog.Warning, () =>
+                        FLogger.Text($"There are some packages with an unknown type {entry.Extension}. Check Log file for a full list.", Constants.WHITE, true));
                 }
 
                 break;
@@ -1391,7 +1392,7 @@ public class CUE4ParseViewModel : ViewModel
                 return false;
             }
             case UAkMediaAssetData when isNone || saveAudio:
-            case USoundNodeWave when isNone:
+            case USoundNodeWave when isNone || saveAudio:
             case USoundWave when isNone || saveAudio:
             {
                 // If UAkMediaAsset exists in the same package it should be used to handle the audio instead (because it contains actual audio name)

@@ -596,18 +596,6 @@ public class Renderer : IDisposable
                 ProcessMesh(actor, compTemplate, m, CalculateTransform(compTemplate, transform), forceShow);
             }
         }
-       // if (actor.TryGetValue(out FPackageIndex staticMeshActor, "StaticMeshComponent", "CollisionComponent", "ComponentTemplate", "StaticMesh", "Mesh", "Base", "LightMesh", "SplineMesh") &&
-        //    staticMeshActor.TryLoad(out UStaticMeshActor staticMeshAct))
-       // {
-       //     if (actor.TryGetValue(out FPackageIndex staticMeshComponent, "StaticMeshComponent", "CollisionComponent", "ComponentTemplate", "StaticMesh", "Mesh", "Base", "LightMesh", "SplineMesh") &&
-      //          staticMeshComponent.TryLoad(out UStaticMeshComponent staticMeshComp))
-     //       {
-       //         if (staticMeshComp.GetStaticMesh().TryLoad(out UStaticMesh m) && m.Materials.Length > 0)
-     //           {
-      //              ProcessMesh(actor, staticMeshComp, m, !staticMeshComp.GetOrDefault("RelativeLocation", staticMeshComp.GetOrDefault("Translation", staticMeshComp.GetOrDefault("Location", FVector.ZeroVector))).Equals(FVector.ZeroVector) ? CalculateTransform(staticMeshComp, transform) : CalculateTransform(actor, transform));
-     //           }
-     //       }
-    //    }
         else if (actor.TryGetValue(out FPackageIndex staticMeshComponent, "StaticMeshComponent", "CollisionComponent", "ComponentTemplate", "StaticMesh", "Mesh", "Base", "LightMesh", "SplineMesh") &&
                  staticMeshComponent.TryLoad(out UStaticMeshComponent staticMeshComp) &&
                  staticMeshComp.GetStaticMesh().TryLoad(out UStaticMesh m) && m.Materials.Length > 0)
@@ -618,7 +606,7 @@ public class Renderer : IDisposable
                  skeletalMeshComponent.TryLoad(out USkeletalMeshComponent skeletalMesh) &&
                  skeletalMesh.GetSkeletalMesh().TryLoad(out USkeletalMesh skm) && skm.Materials.Length > 0)
         {
-           // LoadSkeletalMesh(skm, !skeletalMesh.GetOrDefault("RelativeLocation", skeletalMesh.GetOrDefault("Translation", skeletalMesh.GetOrDefault("Location", FVector.ZeroVector))).Equals(FVector.ZeroVector) ? CalculateTransform(skeletalMesh, transform) : CalculateTransform(actor, transform));
+            LoadSkeletalMesh(skm, !skeletalMesh.GetOrDefault("RelativeLocation", skeletalMesh.GetOrDefault("Translation", skeletalMesh.GetOrDefault("Location", FVector.ZeroVector))).Equals(FVector.ZeroVector) ? CalculateTransform(skeletalMesh, transform) : CalculateTransform(actor, transform));
         }
         else if (actor is AMaterialInstanceActor matinst && matinst.MatInst.TryLoad(out UMaterialInstanceConstant mic))
         {
@@ -678,7 +666,6 @@ public class Renderer : IDisposable
             }
         }
     }
-
 
     private void LoadSkeletalMesh(USkeletalMesh original, Transform transform, bool forceShow = false)
     {
