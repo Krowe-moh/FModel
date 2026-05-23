@@ -52,7 +52,9 @@ public class CreatorPackage : IDisposable
             case "CosmeticCompanionReactFXItemDefinition":
             case "MagpieEntitlementRewardDefinition":
             case "FortDeferredItemGrantDefinition":
+            case "BattleLabDeviceItemDefinition":
             case "PiggybackDanceItemDefinition":
+            case "MyTownBuildingDefinitionData":
             case "AthenaPickaxeItemDefinition":
             case "AthenaGadgetItemDefinition":
             case "AthenaGliderItemDefinition":
@@ -66,6 +68,7 @@ public class CreatorPackage : IDisposable
             case "FortTokenType":
             case "FortAbilityKit":
             case "FortWorkerType":
+            case "FortMissionInfo":
             case "RewardGraphToken":
             case "JunoKnowledgeBundle":
             case "FortBannerTokenType":
