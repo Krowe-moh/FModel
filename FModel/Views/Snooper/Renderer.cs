@@ -608,10 +608,10 @@ public class Renderer : IDisposable
         {
             LoadSkeletalMesh(skm, !skeletalMesh.GetOrDefault("RelativeLocation", skeletalMesh.GetOrDefault("Translation", skeletalMesh.GetOrDefault("Location", FVector.ZeroVector))).Equals(FVector.ZeroVector) ? CalculateTransform(skeletalMesh, transform) : CalculateTransform(actor, transform));
         }
-        else if (actor is AMaterialInstanceActor matinst && matinst.MatInst.TryLoad(out UMaterialInstanceConstant mic))
-        {
-            LoadMaterialInstance(mic, !mic.GetOrDefault("RelativeLocation", mic.GetOrDefault("Translation", mic.GetOrDefault("Location", FVector.ZeroVector))).Equals(FVector.ZeroVector) ? CalculateTransform(mic, transform) : CalculateTransform(actor, transform));
-        }
+      //  else if (actor is AMaterialInstanceActor matinst && matinst.MatInst.TryLoad(out UMaterialInstanceConstant mic))
+      //  {
+       //     LoadMaterialInstance(mic, !mic.GetOrDefault("RelativeLocation", mic.GetOrDefault("Translation", mic.GetOrDefault("Location", FVector.ZeroVector))).Equals(FVector.ZeroVector) ? CalculateTransform(mic, transform) : CalculateTransform(actor, transform));
+      //  }
     }
 
     private void LoadMaterialInstance(UMaterialInstance original, Transform transform, bool forceShow = false)
