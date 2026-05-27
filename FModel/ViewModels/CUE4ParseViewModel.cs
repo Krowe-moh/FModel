@@ -876,6 +876,14 @@ public class CUE4ParseViewModel : ViewModel
 
                 break;
             }
+            case "bin" when entry.Name.Contains("PersistentCookerShaderData", StringComparison.OrdinalIgnoreCase):
+            {
+                var archive = entry.CreateReader();
+                var shaderData = new FCookerShaderData(archive);
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(shaderData, Formatting.Indented), saveProperties, updateUi);
+
+                break;
+            }
             case "bank":
             {
                 var archive = entry.CreateReader();
