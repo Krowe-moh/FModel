@@ -25,6 +25,7 @@ using CUE4Parse.GameTypes.Borderlands4.Wwise;
 using CUE4Parse.GameTypes.DFHO.Assets.Objects;
 using CUE4Parse.GameTypes.HonorOfKings.FileProvider;
 using CUE4Parse.GameTypes.KRD.Assets.Exports;
+using CUE4Parse.GameTypes.LegoBatman.Assets;
 using CUE4Parse.GameTypes.RocoKingdomWorld.Assets.Objects;
 using CUE4Parse.GameTypes.SMG.UE4.Assets.Exports.Wwise;
 using CUE4Parse.GameTypes.SquareEnix.UE4.Assets.Exports;
@@ -66,7 +67,6 @@ using CUE4Parse.GameTypes.AoC.Objects;
 using CUE4Parse.GameTypes.RL.Encryption.Aes;
 using EpicManifestParser;
 using EpicManifestParser.UE;
-using EpicManifestParser.ZlibngDotNetDecompressor;
 using FModel.Creator;
 using FModel.Extensions;
 using FModel.Framework;
@@ -101,6 +101,8 @@ public class CUE4ParseViewModel : ViewModel
 
     private readonly Regex _fnLiveRegex = new(@"^FortniteGame[/\\]Content[/\\]Paks[/\\]",
         RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly HttpClient _chunkClient = ManifestParseOptions.CreateDefaultClient();
 
     private bool _modelIsOverwritingMaterial;
 
@@ -235,9 +237,9 @@ public class CUE4ParseViewModel : ViewModel
         {
             Provider.OnDemandOptions = new IoStoreOnDemandOptions
             {
-                ChunkHostUri = new Uri("https://download.epicgames.com/", UriKind.Absolute),
+                ChunkHostUri = new Uri("https://egdownload.fastly-edge.com/", UriKind.Absolute),
                 ChunkCacheDirectory = Directory.CreateDirectory(Path.Combine(UserSettings.Default.OutputDirectory, ".data")),
-                Timeout = TimeSpan.FromSeconds(30)
+                DownloaderClient = _chunkClient
             };
 
             switch (Provider)
@@ -258,9 +260,9 @@ public class CUE4ParseViewModel : ViewModel
                             {
                                 ChunkCacheDirectory = cacheDir,
                                 ManifestCacheDirectory = cacheDir,
-                                ChunkBaseUrl = "http://download.epicgames.com/Builds/Fortnite/CloudDir/",
-                                Decompressor = ManifestZlibngDotNetDecompressor.Decompress,
-                                DecompressorState = ZlibHelper.Instance,
+                                ChunkBaseUrl = "https://egdownload.fastly-edge.com/Builds/Fortnite/CloudDir/",
+                                Decompressor = Compression.Decompressor,
+                                Client = _chunkClient,
                                 CacheChunksAsIs = false
                             };
 
@@ -271,7 +273,7 @@ public class CUE4ParseViewModel : ViewModel
                             {
                                 (manifest, _) = manifestInfo.DownloadAndParseAsync(manifestOptions,
                                     cancellationToken: cancellationToken,
-                                    elementManifestPredicate: static x => x.Uri.Host == "download.epicgames.com"
+                                    elementDownloadPredicate: static x => x.Uri.Host is "egdownload.fastly-edge.com" or "epicgames-download1.akamaized.net" or "download.epicgames.com"
                                 ).GetAwaiter().GetResult();
                             }
                             catch (HttpRequestException ex)
@@ -765,6 +767,7 @@ public class CUE4ParseViewModel : ViewModel
             case "archive":
             case "dnearchive": // Banishers: Ghosts of New Eden
             case "gitignore":
+            case "gitattributes":
             case "LICENSE":
             case "playstats": // Dispatch
             case "template":
@@ -823,6 +826,8 @@ public class CUE4ParseViewModel : ViewModel
             case "bl":
             case "bm":
             case "br":
+            case "sql":
+            case "cs":
             {
                 var data = Provider.SaveAsset(entry);
                 using var stream = new MemoryStream(data) { Position = 0 };
@@ -832,6 +837,7 @@ public class CUE4ParseViewModel : ViewModel
 
                 break;
             }
+            case "ebd" when Provider.Versions.Game is EGame.GAME_ArcRaiders:
             case "json":
             {
                 var data = Provider.SaveAsset(entry);
@@ -1079,8 +1085,24 @@ public class CUE4ParseViewModel : ViewModel
             var nonPath = Provider.Files.Keys.FirstOrDefault(k => k.EndsWith(nonFileName, StringComparison.OrdinalIgnoreCase));
 
             // I will only get one localization file because they did not translate any languages, lol
-            var locPathKey = entry.Path.Replace("/BinData/", "/BinLocalize/en_US/").Replace("/BinDataCompressed/", "/BinLocalize/en_US/");
+            var locPathKey = entry.Path.Replace("/BinData/", "/BinLocalize/zh_Hans/").Replace("/BinDataCompressed/", "/BinLocalize/zh_Hans/");
             var locFileFound = Provider.Files.TryGetValue(locPathKey, out var locEntry);
+
+            if (entry.Path is "NRC/Content/ScriptC/Data/Audio/dataconfig_audio.bytes")
+            {
+                var descFound = Provider.Files.TryGetValue("NRC/Content/ScriptC/Data/Audio/dataconfig_audiodesc.bytes", out var descEntry);
+                var typeDescFound = Provider.Files.TryGetValue("NRC/Content/ScriptC/Data/Audio/typeDesc.bytes", out var typeDescEntry);
+
+                if (!descFound || !typeDescFound)
+                {
+                    Log.Warning("Could not find associated dataconfig_audiodesc.bytes or typeDesc.bytes, cannot parse audio config");
+                    return;
+                }
+
+                var data = new FRocoAudioConfig(entry.CreateReader(), descEntry.CreateReader(), typeDescEntry.CreateReader());
+                TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(data, Formatting.Indented), saveProperties, updateUi);
+                return;
+            }
 
             if (!string.IsNullOrEmpty(nonPath) && Provider.Files.TryGetValue(nonPath, out var nonEntry))
             {
@@ -1373,8 +1395,7 @@ public class CUE4ParseViewModel : ViewModel
                     _ => []
                 };
 
-                var directory = Path.GetDirectoryName(atomObject.Owner?.Name) ?? "/Criware/";
-                directory = Path.GetDirectoryName(atomObject.Owner.Provider.FixPath(directory));
+                var directory = Path.GetDirectoryName(Provider.FixPath(atomObject.Owner?.Name ?? "/Criware/"));
                 foreach (var sound in extractedSounds)
                 {
                     SaveAndPlaySound(cancellationToken, Path.Combine(directory, sound.Name).Replace("\\", "/"), sound.Extension, sound.Data, saveAudio, updateUi);
@@ -1492,6 +1513,27 @@ public class CUE4ParseViewModel : ViewModel
                     }
                 }
 
+                return false;
+            }
+            // LEGO® Batman™: Legacy of the Dark Knight
+            case UWubAudioEvent when (isNone || saveAudio) && pointer.Object.Value is UWubAudioEvent wubAudioEvent:
+            {
+                var extractedSounds = WwiseProvider.ExtractWubAudioEventSounds(wubAudioEvent);
+                foreach (var sound in extractedSounds)
+                {
+                    SaveAndPlaySound(cancellationToken, sound.OutputPath, sound.Extension, sound.Data?.GetData() ?? [], saveAudio, updateUi);
+                }
+                return false;
+            }
+            case UWubDialogueEvent when (isNone || saveAudio) && pointer.Object.Value is UWubDialogueEvent wubDialogueEvent:
+            {
+                var files = wubDialogueEvent.Wems
+                    .SelectMany(wem => Provider.Files.Values.Where(file => file.Path.EndsWith(wem.Text + ".wem", StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+                foreach (var entry in files)
+                {
+                    SaveAndPlaySound(cancellationToken, entry.PathWithoutExtension, entry.Extension, entry.Read(), saveAudio, updateUi);
+                }
                 return false;
             }
             case UWorld when isNone && UserSettings.Default.PreviewWorlds:
@@ -1675,7 +1717,7 @@ public class CUE4ParseViewModel : ViewModel
             bool conversionSuccess = true;
             if (UserSettings.Default.ConvertAudioOnBulkExport && extLower is not "wav")
             {
-                if (AudioPlayerViewModel.TryConvert(savedAudioPath, data, out string wavFilePath))
+                if (AudioPlayerViewModel.TryConvert(savedAudioPath, data, extLower, out string wavFilePath))
                     savedAudioPath = wavFilePath;
                 else
                 {
