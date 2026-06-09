@@ -167,6 +167,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
 
     private Task ResolveByPackageAsync(EResolveCompute resolve)
     {
+        //return Task.Run(() => {});
         if (Asset.Extension is "umap")
         {
             AssetCategory = EAssetCategory.World;
@@ -207,11 +208,11 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 if (pointer?.Object is null)
                     continue;
 
-                var dummy = ((AbstractUePackage) pkg).ConstructObject(pointer.Class, pkg);
-                if (dummy is null)
+                var dummy2 = ((AbstractUePackage) pkg).ConstructObject(pointer.Class, pkg);
+                if (dummy2 is null)
                     continue;
 
-                var result = dummy switch
+                var result = dummy2 switch
                 {
                     URigVMBlueprintGeneratedClass => (EAssetCategory.RigVMBlueprintGeneratedClass, EBulkType.Code),
                     UAnimBlueprintGeneratedClass => (EAssetCategory.AnimBlueprintGeneratedClass, EBulkType.Code),
@@ -280,7 +281,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 if (result.Item1 != EAssetCategory.All || bestDummy is null)
                 {
                     bestPointer = pointer;
-                    bestDummy = dummy;
+                    bestDummy = dummy2;
                     bestCategory = result.Item1;
                     bestActions = result.Item2;
 
@@ -292,7 +293,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             if (bestPointer?.Object is null || bestDummy is null)
                 return;
 
-            var dummy = ((AbstractUePackage) pkg).ConstructObject(pointer.Class, pkg);
+            var dummy = ((AbstractUePackage) pkg).ConstructObject(bestPointer.Class, pkg);
             ResolvedAssetType = dummy.ExportType;
 
             (AssetCategory, AssetActions) = dummy switch

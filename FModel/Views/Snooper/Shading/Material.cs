@@ -5,6 +5,7 @@ using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Math;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using FModel.Extensions;
 using FModel.Settings;
 using FModel.Views.Snooper.Models;
@@ -264,18 +265,21 @@ public class Material : IDisposable
 /*
         for (var i = 0; i < Normals.Length; i++)
         {
+            if (Normals[i] != null && Normals[i].Guid == new FGuid(0)) continue;
             shader.SetUniform($"uParameters.Normals[{i}].Sampler", unit);
             Normals[i]?.Bind(TextureUnit.Texture0 + unit++);
         }
 
         for (var i = 0; i < SpecularMasks.Length; i++)
         {
+            if (SpecularMasks[i] != null && SpecularMasks[i].Guid == new FGuid(0)) continue;
             shader.SetUniform($"uParameters.SpecularMasks[{i}].Sampler", unit);
             SpecularMasks[i]?.Bind(TextureUnit.Texture0 + unit++);
         }
 
         for (var i = 0; i < Emissive.Length; i++)
         {
+            if (Emissive[i] != null && Emissive[i].Guid == new FGuid(0)) continue;
             shader.SetUniform($"uParameters.Emissive[{i}].Sampler", unit);
             shader.SetUniform($"uParameters.Emissive[{i}].Color", EmissiveColor[i]);
             Emissive[i]?.Bind(TextureUnit.Texture0 + unit++);

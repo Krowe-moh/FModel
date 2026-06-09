@@ -60,6 +60,19 @@ public partial class MainWindow
 
         FLogger.Logger = LogRtbName;
         YesWeCats = this;
+        Loaded += (_, _) =>
+        {
+            var screen = System.Windows.Forms.Screen.FromPoint(new System.Drawing.Point(System.Windows.Forms.Cursor.Position.X, System.Windows.Forms.Cursor.Position.Y));
+            var area = screen.WorkingArea;
+
+            WindowStartupLocation = WindowStartupLocation.Manual;
+
+            Width = Math.Min(1600, area.Width * 0.85);
+            Height = Math.Min(900, area.Height * 0.85);
+
+            Left = area.Left + (area.Width - Width) / 2;
+            Top = area.Top + (area.Height - Height) / 2;
+        };
     }
 
     // Hack to sync selection between packages tab and explorer

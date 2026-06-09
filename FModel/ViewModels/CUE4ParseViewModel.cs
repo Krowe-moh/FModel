@@ -1437,7 +1437,7 @@ public class CUE4ParseViewModel : ViewModel
                     return false;
                 }
 
-                SaveAndPlaySound(cancellationToken, TabControl.SelectedTab.Entry.PathWithoutExtension.Replace('\\', '/'), audioFormat, data, saveAudio, updateUi);
+                SaveAndPlaySound(cancellationToken, TabControl.SelectedTab.Entry.Directory.Replace('\\', '/') + (pointer?.Outer?.Class?.Name.Text == "Package" ? $"/{pointer.Outer.Name}/" : "/") + pointer.Name, audioFormat, data, saveAudio, updateUi);
                 return false;
             }
             case UAkMediaAsset when (isNone || saveAudio) && pointer.Object.Value is UAkMediaAsset akMediaAsset:
