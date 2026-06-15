@@ -494,6 +494,7 @@ public class AudioPlayerViewModel : ViewModel, ISource, IDisposable
         });
     }
 
+    [DebuggerStepThrough]
     private void TimerTick(object state)
     {
         if (_waveSource == null || _soundOut == null) return;

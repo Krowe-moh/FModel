@@ -683,6 +683,8 @@ public class CUE4ParseViewModel : ViewModel
             case "XXX":
             case "udk":
             case "utx":
+            case "umx":
+            case "unr":
             case "ukx":
             case "uax":
             case "ut2":
@@ -1422,6 +1424,7 @@ public class CUE4ParseViewModel : ViewModel
             }
             case UAkMediaAssetData when isNone || saveAudio:
             case USoundNodeWave when isNone || saveAudio:
+            case USound when isNone || saveAudio:
             case USoundWave when isNone || saveAudio:
             {
                 // If UAkMediaAsset exists in the same package it should be used to handle the audio instead (because it contains actual audio name)
