@@ -63,7 +63,8 @@ using CUE4Parse.UE4.Wwise;
 using CUE4Parse.Utils;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
-using CUE4Parse.GameTypes.AoC.Objects;
+using CUE4Parse.MappingsProvider.Jmap;
+using CUE4Parse.MappingsProvider.Usmap;
 using CUE4Parse.GameTypes.RL.Encryption.Aes;
 using EpicManifestParser;
 using EpicManifestParser.UE;
@@ -346,6 +347,7 @@ public class CUE4ParseViewModel : ViewModel
             }
 
             Provider.Initialize();
+            GameDirectory.AddLooseFiles(Provider.LooseFileCount);
             _wwiseProviderLazy = new Lazy<WwiseProvider>(() => new WwiseProvider(Provider, UserSettings.Default.GameDirectory));
             _fmodProviderLazy = new Lazy<FModProvider>(() => new FModProvider(Provider, UserSettings.Default.GameDirectory));
             _criWareProviderLazy = new Lazy<CriWareProvider>(() => new CriWareProvider(Provider, UserSettings.Default.GameDirectory));
