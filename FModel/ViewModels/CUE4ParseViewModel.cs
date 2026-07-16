@@ -236,7 +236,7 @@ public class CUE4ParseViewModel : ViewModel
             Provider.OnDemandOptions = new IoStoreOnDemandOptions
             {
                 ChunkHostUri = new Uri("https://egdownload.fastly-edge.com/", UriKind.Absolute),
-                ChunkCacheDirectory = Directory.CreateDirectory(Path.Combine(UserSettings.Default.OutputDirectory, ".data")),
+                ChunkCacheDirectory = new DirectoryInfo(CacheManager.ChunksDirectory),
                 DownloaderClient = _chunkClient
             };
 
@@ -253,11 +253,10 @@ public class CUE4ParseViewModel : ViewModel
                                 throw new FileLoadException("Could not load latest Fortnite manifest, you may have to switch to your local installation.");
                             }
 
-                            var cacheDir = Directory.CreateDirectory(Path.Combine(UserSettings.Default.OutputDirectory, ".data")).FullName;
                             var manifestOptions = new ManifestParseOptions
                             {
-                                ChunkCacheDirectory = cacheDir,
-                                ManifestCacheDirectory = cacheDir,
+                                ChunkCacheDirectory = CacheManager.ChunksDirectory,
+                                ManifestCacheDirectory = CacheManager.ManifestsDirectory,
                                 ChunkBaseUrl = "https://egdownload.fastly-edge.com/Builds/Fortnite/CloudDir/",
                                 Decompressor = Compression.Decompressor,
                                 Client = _chunkClient,
@@ -285,25 +284,16 @@ public class CUE4ParseViewModel : ViewModel
                                 IoStoreOnDemand.Read(new StreamReader(ioStoreOnDemandFile.GetStream()));
                             }
 
-                            Parallel.ForEach(manifest.Files.Where(x => _fnLiveRegex.IsMatch(x.FileName)), fileManifest =>
-                            {
-                                p.RegisterVfs(fileManifest.FileName, [fileManifest.GetStream()],
-                                    it => new FRandomAccessStreamArchive(it, manifest.FindFile(it)!.GetStream(), p.Versions));
-                            });
+                            RegisterFortniteLiveArchives(p, manifest, cancellationToken);
 
                             var manifests = _apiEndpointView.DillyApi.GetManifests(cancellationToken);
                             var downloadUrl = manifests.First(x => x.AppName == "Fortnite_Studio").DownloadUrl;
 
-                            using var client = new HttpClient();
-                            var manifestBytes = client.GetByteArrayAsync(downloadUrl).GetAwaiter().GetResult();
+                            var manifestBytes = _chunkClient.GetByteArrayAsync(downloadUrl, cancellationToken).GetAwaiter().GetResult();
 
                             var uefnManifest = FBuildPatchAppManifest.Deserialize(manifestBytes, manifestOptions);
 
-                            Parallel.ForEach(uefnManifest.Files.Where(x => _fnLiveRegex.IsMatch(x.FileName)), fileManifest =>
-                            {
-                                p.RegisterVfs(fileManifest.FileName, [fileManifest.GetStream()],
-                                    it => new FRandomAccessStreamArchive(it, uefnManifest.FindFile(it)!.GetStream(), p.Versions));
-                            });
+                            RegisterFortniteLiveArchives(p, uefnManifest, cancellationToken);
 
                             var elapsedTime = Stopwatch.GetElapsedTime(startTs);
                             FLogger.Append(ELog.Information, () =>
@@ -349,6 +339,36 @@ public class CUE4ParseViewModel : ViewModel
             _criWareProviderLazy = new Lazy<CriWareProvider>(() => new CriWareProvider(Provider, UserSettings.Default.GameDirectory));
             Log.Information($"{Provider.Versions.Game} ({Provider.Versions.Platform}) | Archives: x{Provider.UnloadedVfs.Count} | AES: x{Provider.RequiredKeys.Count} | Loose Files: x{Provider.Files.Count}");
         });
+    }
+
+    private void RegisterFortniteLiveArchives(StreamedFileProvider provider, FBuildPatchAppManifest manifest,
+        CancellationToken cancellationToken)
+    {
+        var archiveFiles = manifest.Files.Where(x =>
+            _fnLiveRegex.IsMatch(x.FileName) &&
+            (x.FileName.EndsWith(".pak", StringComparison.OrdinalIgnoreCase) ||
+             x.FileName.EndsWith(".utoc", StringComparison.OrdinalIgnoreCase) ||
+             x.FileName.EndsWith(".uondemandtoc", StringComparison.OrdinalIgnoreCase))).ToList();
+        var parallelOptions = new ParallelOptions { CancellationToken = cancellationToken };
+
+        Parallel.ForEach(archiveFiles.Where(x => !x.FileName.EndsWith(".uondemandtoc", StringComparison.OrdinalIgnoreCase)),
+            parallelOptions, fileManifest =>
+            {
+                provider.RegisterVfs(fileManifest.FileName, [fileManifest.GetStream()],
+                    it => new FRandomAccessStreamArchive(it, manifest.FindFile(it)!.GetStream(), provider.Versions));
+            });
+
+        // V2 on-demand TOCs are large and span many BuildPatch chunks. Reading them through CUE4Parse's synchronous
+        // archive interface downloads those chunks one at a time. Materialize each TOC through EpicManifestParser's
+        // parallel path first, then register it normally so the on-demand containers remain available.
+        foreach (var fileManifest in archiveFiles.Where(x => x.FileName.EndsWith(".uondemandtoc", StringComparison.OrdinalIgnoreCase)))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var stream = fileManifest.GetStream();
+            var data = stream.SaveBytesAsync(8, cancellationToken).GetAwaiter().GetResult();
+            using var archive = new FByteArchive(fileManifest.FileName, data, provider.Versions);
+            provider.RegisterVfs(new IoChunkToc(archive));
+        }
     }
 
     /// <summary>
@@ -447,7 +467,7 @@ public class CUE4ParseViewModel : ViewModel
                     endpoint.Path = "$.mappings.ZStandard";
                 }
 
-                var mappingsFolder = Path.Combine(UserSettings.Default.OutputDirectory, ".data");
+                var mappingsFolder = CacheManager.MappingsDirectory;
                 var mappings = _apiEndpointView.DynamicApi.GetMappings(CancellationToken.None, endpoint.Url, endpoint.Path);
                 if (mappings is { Length: > 0 })
                 {
