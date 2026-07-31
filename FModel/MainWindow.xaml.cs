@@ -7,12 +7,14 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using CUE4Parse.Compression;
 using FModel.Services;
 using FModel.Settings;
 using FModel.ViewModels;
 using FModel.Views;
 using FModel.Views.Resources.Controls;
 using ICSharpCode.AvalonEdit.Editing;
+using SharpLzo;
 
 namespace FModel;
 
@@ -118,6 +120,12 @@ public partial class MainWindow
             ApplicationViewModel.InitOodle(),
             ApplicationViewModel.InitZlib()
         );
+
+        Compression.UseLZO(static (source, destination, out written) =>
+        {
+            var result = Lzo.TryDecompress(source, source.Length, destination, out written);
+            return result == LzoResult.OK;
+        });
 
         await _applicationView.CUE4Parse.Initialize();
         await _applicationView.AesManager.InitAes();

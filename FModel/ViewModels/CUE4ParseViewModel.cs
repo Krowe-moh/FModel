@@ -63,6 +63,7 @@ using CUE4Parse.UE4.Wwise;
 using CUE4Parse.Utils;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Sounds;
+using CUE4Parse.GameTypes.AoC.Objects;
 using CUE4Parse.MappingsProvider.Jmap;
 using CUE4Parse.MappingsProvider.Usmap;
 using CUE4Parse.GameTypes.RL.Encryption.Aes;
@@ -91,6 +92,7 @@ using CUE4Parse.UE4.Assets.Exports.Fmod;
 using CUE4Parse.UE4.Assets.Exports.Sound.Node;
 using CUE4Parse.UE4.Exceptions;
 using CUE4Parse.UE4.FMod;
+using CUE4Parse.UE4.IO.Objects;
 
 
 namespace FModel.ViewModels;
@@ -675,6 +677,43 @@ public class CUE4ParseViewModel : ViewModel
         var saveDecompiled = HasFlag(bulk, EBulkType.Code);
         switch (entry.Extension)
         {
+            case "bin" when entry.Name.Contains("Coalesced") && Provider.Versions.Game is EGame.GAME_RocketLeague:
+            {
+                var data = Provider.SaveAsset(entry);
+                RocketLeagueAes.DecryptCoalesced(data, out byte[] decryptedData);
+                var Ar = new FByteArchive("Rocket League - Decrypted Coalesced", decryptedData);
+                var sb = new StringBuilder();
+
+                int fileCount = Ar.Read<int>();
+
+                for (int f = 0; f < fileCount; f++)
+                {
+                    string fileName = Ar.ReadFString();
+                    int sectionCount = Ar.Read<int>();
+
+                    sb.AppendLine($"// ===== {fileName} =====");
+                    for (int s = 0; s < sectionCount; s++)
+                    {
+                        string sectionName = Ar.ReadFString();
+                        int keyCount = Ar.Read<int>();
+
+                        sb.AppendLine($"[{sectionName}]");
+
+                        for (int k = 0; k < keyCount; k++)
+                        {
+                            string key = Ar.ReadFString();
+                            string value = Ar.ReadFString();
+                            sb.AppendLine($"{key}={value}");
+                        }
+
+                        sb.AppendLine();
+                    }
+                }
+
+                TabControl.SelectedTab.Highlighter = AvalonExtensions.HighlighterSelector("ini");
+                TabControl.SelectedTab.SetDocumentText(sb.ToString(), saveProperties, updateUi);
+                break;
+            }
             case "uasset":
             case "umap":
 
@@ -684,6 +723,7 @@ public class CUE4ParseViewModel : ViewModel
             case "xxx":
             case "XXX":
             case "udk":
+            case "mo":
             case "utx":
             case "umx":
             case "unr":
@@ -879,7 +919,6 @@ public class CUE4ParseViewModel : ViewModel
             }
             case "bin" when entry.Name.Contains("GlobalShaderCache", StringComparison.OrdinalIgnoreCase):
             {
-                break;
                 var archive = entry.CreateReader();
                 var registry = new FGlobalShaderCache(archive);
                 TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(registry, Formatting.Indented), saveProperties, updateUi);
@@ -916,6 +955,7 @@ public class CUE4ParseViewModel : ViewModel
             }
             case "bnk":
             case "pck":
+            case "PCK":
             {
                 var archive = entry.CreateReader();
                 var wwise = new WwiseReader(new FWwiseArchive(archive), new WwiseGameFileSource(entry));
@@ -1662,7 +1702,7 @@ public class CUE4ParseViewModel : ViewModel
             if (dummy is not UClass || pointer.Object.Value is not UClass blueprint)
                 continue;
 
-            cppList.Add(blueprint.DecompileBlueprintToPseudo(pkg.Mappings, cookedMetaData));
+            cppList.Add(blueprint.DecompileBlueprintToPseudo(cookedMetaData));
         }
 
         if (cppList.Count == 0) return false;

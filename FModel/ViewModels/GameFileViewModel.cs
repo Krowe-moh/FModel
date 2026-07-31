@@ -167,8 +167,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
 
     private Task ResolveByPackageAsync(EResolveCompute resolve)
     {
-        //return Task.Run(() => {});
-        if (Asset.Extension is "umap")
+        if (Asset.Extension is "umap" or "udk")
         {
             AssetCategory = EAssetCategory.World;
             AssetActions = EBulkType.Meshes | EBulkType.Textures | EBulkType.Audio | EBulkType.Code;
@@ -186,6 +185,8 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             return Task.CompletedTask;
         }
 
+        //return Task.Run(() => {});
+        return Task.Run(() => {});
         return Task.Run(() =>
         {
             // TODO: cache and reuse packages
@@ -485,6 +486,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             case "bank":
             case "bnk":
             case "pck":
+            case "PCK":
                 AssetCategory = EAssetCategory.SoundBank;
                 AssetActions = EBulkType.Audio;
                 break;
