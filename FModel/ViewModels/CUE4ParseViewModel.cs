@@ -75,6 +75,7 @@ using FModel.Extensions;
 using FModel.Framework;
 using FModel.Services;
 using FModel.Settings;
+using FModel.ViewModels.ApiEndpoints.Models;
 using FModel.Views;
 using FModel.Views.Resources.Controls;
 using FModel.Views.Snooper;
@@ -88,6 +89,7 @@ using Svg.Skia;
 using UE4Config.Parsing;
 using Application = System.Windows.Application;
 using FGuid = CUE4Parse.UE4.Objects.Core.Misc.FGuid;
+using Version = System.Version;
 
 namespace FModel.ViewModels;
 
@@ -372,6 +374,22 @@ public class CUE4ParseViewModel : ViewModel
         }
     }
 
+    private void RegisterArchivesFromManifest(DefaultFileProvider provider, FBuildPatchAppManifest manifest)
+    {
+        var archiveFiles = manifest.Files.Where(x =>
+            _fnLiveRegex.IsMatch(x.FileName) &&
+            (x.FileName.EndsWith(".pak", StringComparison.OrdinalIgnoreCase) ||
+             x.FileName.EndsWith(".utoc", StringComparison.OrdinalIgnoreCase) ||
+             x.FileName.EndsWith(".uondemandtoc", StringComparison.OrdinalIgnoreCase))).ToList();
+
+        Parallel.ForEach(archiveFiles.Where(x => !x.FileName.EndsWith(".uondemandtoc", StringComparison.OrdinalIgnoreCase)), fileManifest =>
+            {
+                provider.RegisterVfs(fileManifest.FileName, [fileManifest.GetStream()],
+                    it => new FRandomAccessStreamArchive(it, manifest.FindFile(it)!.GetStream(), provider.Versions));
+            });
+    }
+
+
     /// <summary>
     /// load virtual files system from GameDirectory
     /// </summary>
@@ -548,6 +566,47 @@ public class CUE4ParseViewModel : ViewModel
             var onDemandCount = await Provider.MountAsync();
             FLogger.Append(ELog.Information, () =>
                 FLogger.Text($"{onDemandCount} on-demand archive{(onDemandCount > 1 ? "s" : "")} streamed via epicgames.com", Constants.WHITE, true));
+        });
+    }
+
+    public Task VerifyCloudArchives()
+    {
+        if (Provider is not DefaultFileProvider p || !Provider.ProjectName.Equals("FortniteGame", StringComparison.OrdinalIgnoreCase))
+            return Task.CompletedTask;
+
+        var cloudContentPath = Path.Combine(UserSettings.Default.GameDirectory, "..\\..\\..\\Cloud\\cloudcontent.json");
+        if (!File.Exists(cloudContentPath))
+            return Task.CompletedTask;
+
+        return Task.Run(async () =>
+        {
+            var startTs = Stopwatch.GetTimestamp();
+
+            var cloudContent = JsonConvert.DeserializeObject<CloudContent>(await File.ReadAllTextAsync(cloudContentPath));
+            if (cloudContent is null || string.IsNullOrEmpty(cloudContent.ManifestPath))
+                return;
+
+            var manifestBytes = await _chunkClient.GetByteArrayAsync("https://egdownload.fastly-edge.com/" + cloudContent.ManifestPath);
+
+            var manifestOptions = new ManifestParseOptions
+            {
+                ChunkCacheDirectory = CacheManager.ChunksDirectory,
+                ManifestCacheDirectory = CacheManager.ManifestsDirectory,
+                ChunkBaseUrl = "https://egdownload.fastly-edge.com/Builds/Fortnite/CloudDir/",
+                Decompressor = Compression.Decompressor,
+                Client = _chunkClient,
+                CacheChunksAsIs = false
+            };
+
+            var contentManifest = FBuildPatchAppManifest.Deserialize(manifestBytes, manifestOptions);
+
+            RegisterArchivesFromManifest(p, contentManifest);
+
+            var cloudCount = await Provider.MountAsync();
+            var elapsedTime = Stopwatch.GetElapsedTime(startTs);
+
+            FLogger.Append(ELog.Information, () =>
+                FLogger.Text($"{cloudCount} cloud archive{(cloudCount > 1 ? "s" : "")} streamed via epicgames.com in {elapsedTime.TotalMilliseconds:F1}ms", Constants.WHITE, true));
         });
     }
 
