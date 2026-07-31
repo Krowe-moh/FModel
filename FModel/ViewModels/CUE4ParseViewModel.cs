@@ -379,10 +379,9 @@ public class CUE4ParseViewModel : ViewModel
         var archiveFiles = manifest.Files.Where(x =>
             _fnLiveRegex.IsMatch(x.FileName) &&
             (x.FileName.EndsWith(".pak", StringComparison.OrdinalIgnoreCase) ||
-             x.FileName.EndsWith(".utoc", StringComparison.OrdinalIgnoreCase) ||
-             x.FileName.EndsWith(".uondemandtoc", StringComparison.OrdinalIgnoreCase))).ToList();
+             x.FileName.EndsWith(".utoc", StringComparison.OrdinalIgnoreCase))).ToList();
 
-        Parallel.ForEach(archiveFiles.Where(x => !x.FileName.EndsWith(".uondemandtoc", StringComparison.OrdinalIgnoreCase)), fileManifest =>
+        Parallel.ForEach(archiveFiles, fileManifest =>
             {
                 provider.RegisterVfs(fileManifest.FileName, [fileManifest.GetStream()],
                     it => new FRandomAccessStreamArchive(it, manifest.FindFile(it)!.GetStream(), provider.Versions));
