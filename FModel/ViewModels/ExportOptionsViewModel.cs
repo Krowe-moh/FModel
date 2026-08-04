@@ -228,11 +228,11 @@ public class ExportOptionsViewModel : ViewModel
         SelectedTextureFormat,
         TextureQuality,
         ExportHdrTexturesAsHdr,
+        ExportAllTextureMips,
         SelectedMaterialDepth,
         ExportMaterials,
         ExportMorphTargets,
         SelectedSocketFormat,
-        SelectedCompressionFormat,
-        ExportAllTextureMips
+        SelectedCompressionFormat
     );
 }
