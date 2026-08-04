@@ -671,6 +671,7 @@ public class CUE4ParseViewModel : ViewModel
         switch (entry.Extension)
         {
             case "uasset":
+            case "upk":
             case "umap":
             {
                 var result = Provider.GetLoadPackageResult(entry);
