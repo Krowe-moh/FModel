@@ -170,7 +170,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
         if (Asset.Extension is "umap" or "udk")
         {
             AssetCategory = EAssetCategory.World;
-            AssetActions = EBulkType.Meshes | EBulkType.Textures | EBulkType.Audio | EBulkType.Code;
+            AssetActions = EBulkType.Worlds | EBulkType.Textures | EBulkType.Audio | EBulkType.Code;
             ResolvedAssetType = "World";
             Resolved |= EResolveCompute.Preview;
             return Task.CompletedTask;
@@ -469,6 +469,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             case "stinfo":
             case "ushaderbytecode":
             case "upipelinecache":
+            case "dxbc":
                 AssetCategory = EAssetCategory.ByteCode;
                 break;
             case "wav":

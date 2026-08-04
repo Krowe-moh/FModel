@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -233,6 +234,7 @@ public class AssetsFolderViewModel
             {
                 TreeItem lastNode = null;
                 TreeItem parentItem = null;
+
                 var folders = entry.Path.Split('/', StringSplitOptions.RemoveEmptyEntries);
                 var builder = new StringBuilder(64);
                 var parentNode = treeItems;
@@ -281,13 +283,16 @@ public class AssetsFolderViewModel
                 lastNode?.AssetsList.Add(entry);
             }
 
+            Folders.AddRange(treeItems);
+
             if (treeItems.Count > 0)
             {
+                // Select after publishing the collection. Selecting a detached TreeItem lets WPF
+                // auto-select the first root (usually the synthetic "Content" bucket) instead.
                 var projectName = ApplicationService.ApplicationView.CUE4Parse.Provider.ProjectName;
                 (treeItems.FirstOrDefault(x => x.Header.Equals(projectName, StringComparison.OrdinalIgnoreCase)) ?? treeItems[0]).IsSelected = true;
             }
 
-            Folders.AddRange(treeItems);
             ApplicationService.ApplicationView.CUE4Parse.SearchVm.ChangeCollection(entries);
 
             foreach (var folder in Folders)

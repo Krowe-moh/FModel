@@ -67,8 +67,10 @@ public partial class SettingsView
 
         _applicationView.CUE4Parse.Provider.ReadScriptData = UserSettings.Default.ReadScriptData;
         _applicationView.CUE4Parse.Provider.ReadShaderMaps = UserSettings.Default.ReadShaderMaps;
+        _applicationView.CUE4Parse.Provider.Versions.Platform = UserSettings.Default.CurrentDir.TexturePlatform;
 
         UserSettings.Save();
+        ExportSessionViewModel.Instance.Options.ResetToUserDefaults();
     }
 
     private void OnBrowseOutput(object sender, RoutedEventArgs e)
@@ -120,8 +122,8 @@ public partial class SettingsView
         var openFileDialog = new OpenFileDialog
         {
             Title = "Select a mapping file",
-            InitialDirectory = Path.Combine(UserSettings.Default.OutputDirectory, ".data"),
-            Filter = "USMAP Files (*.usmap)|*.usmap|All Files (*.*)|*.*"
+            InitialDirectory = CacheManager.MappingsDirectory,
+            Filter = "USMAP Files (*.usmap, *.jmap, *.jmap.gz)|*.usmap;*.jmap;*.jmap.gz|All Files (*.*)|*.*"
         };
 
         if (!openFileDialog.ShowDialog().GetValueOrDefault())
@@ -203,24 +205,36 @@ public partial class SettingsView
         _applicationView.SettingsView.SelectedMapStructTypes = editor.MapStructTypes;
     }
 
-    private void OpenAesEndpoint(object sender, RoutedEventArgs e)
+    private async void OpenAesEndpoint(object sender, RoutedEventArgs e)
     {
         var editor = new EndpointEditor(
             _applicationView.SettingsView.AesEndpoint, "Endpoint Configuration (AES)", EEndpointType.Aes);
         if (_applicationView.Status.IsReady)
             _applicationView.Status.SetStatus(EStatusKind.Configuring);
         editor.ShowDialog();
+        if (editor.DialogResult == true)
+        {
+            await _applicationView.CUE4Parse.RefreshAes();
+            await _applicationView.AesManager.InitAes();
+            _applicationView.AesManager.HasChange = true;
+            await _applicationView.UpdateProvider(false);
+        }
         if (_applicationView.Status.IsReady)
             _applicationView.Status.SetStatus(EStatusKind.Ready);
     }
 
-    private void OpenMappingEndpoint(object sender, RoutedEventArgs e)
+    private async void OpenMappingEndpoint(object sender, RoutedEventArgs e)
     {
         var editor = new EndpointEditor(
             _applicationView.SettingsView.MappingEndpoint, "Endpoint Configuration (Mapping)", EEndpointType.Mapping);
         if (_applicationView.Status.IsReady)
             _applicationView.Status.SetStatus(EStatusKind.Configuring);
         editor.ShowDialog();
+        if (editor.DialogResult == true)
+        {
+            await _applicationView.CUE4Parse.InitMappings(true);
+            await _applicationView.UpdateProvider(false);
+        }
         if (_applicationView.Status.IsReady)
             _applicationView.Status.SetStatus(EStatusKind.Ready);
     }
