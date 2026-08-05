@@ -196,7 +196,7 @@ public class Options
         var bitmap = o switch
         {
             UTexture2D texture2D => texture2D.Decode(UserSettings.Default.PreviewMaxTextureSize, UserSettings.Default.CurrentDir.TexturePlatform),
-            UTexture2DArray texture2DArray => texture2DArray.DecodeTextureArray(UserSettings.Default.CurrentDir.TexturePlatform)?.FirstOrDefault(),
+            UTexture2DArray texture2DArray => texture2DArray.DecodeTextureArray(null, UserSettings.Default.CurrentDir.TexturePlatform)?.FirstOrDefault(),
             _ => o.Decode(UserSettings.Default.CurrentDir.TexturePlatform)
         };
 
