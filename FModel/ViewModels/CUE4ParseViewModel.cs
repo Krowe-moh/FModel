@@ -968,6 +968,7 @@ public class CUE4ParseViewModel : ViewModel
                 var shaderData = new FCookerShaderData(archive);
                 TabControl.SelectedTab.SetDocumentText(JsonConvert.SerializeObject(shaderData, Formatting.Indented), saveProperties, updateUi);
 
+                break;
             }
             case "bin" when entry.Name.Contains("GameFeatureVersePaths", StringComparison.OrdinalIgnoreCase):
             {
@@ -1061,7 +1062,7 @@ public class CUE4ParseViewModel : ViewModel
             case "ewem" when Provider.Versions.Game is EGame.GAME_RocketLeague:
             {
                 var data = Provider.SaveAsset(entry);
-                RocketLeagueAes.Decrypt(data, 0, false, out byte[] decryptedData);
+                RocketLeagueAes.Decrypt(data, 0, 0, false, out byte[] decryptedData);
                 SaveAndPlaySound(cancellationToken, entry.PathWithoutExtension, "wem", decryptedData, saveAudio, updateUi);
 
                 break;

@@ -64,12 +64,12 @@ public sealed class UserSettings : ViewModel
             Default.TextureExportFormat,
             Default.TextureQuality,
             Default.SaveHdrTexturesAsHdr,
+            Default.ExportAllTextureMips,
             Default.MaterialExportFormat,
             Default.SaveEmbeddedMaterials,
             Default.SaveMorphTargets,
             Default.SocketExportFormat,
-            Default.CompressionFormat,
-            Default.ExportAllTextureMips
+            Default.CompressionFormat
         );
     }
 
