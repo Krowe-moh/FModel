@@ -146,12 +146,6 @@ public class StaticModel : UModel<MeshVertex>
         }
     }
 
-
-    public StaticModel(CUE4Parse.UE4.Objects.Engine.UModel export, CStaticMesh staticMesh, Transform transform = null)
-        : base(export, staticMesh.LODs[LodLevel], Array.Empty<ResolvedObject>(), staticMesh.LODs[LodLevel].Verts, staticMesh.LODs.Count, transform)
-    {
-    }
-
     public override void RenderCollision(Shader shader)
     {
         base.RenderCollision(shader);
