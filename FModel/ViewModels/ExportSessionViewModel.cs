@@ -502,4 +502,29 @@ public class LogEntryViewModel(LogEvent log)
         _ => log.Exception?.Message ?? log.RenderMessage()
     };
     public Exception? Exception { get; } = log.Exception;
+    public IReadOnlyList<ExceptionDetailsViewModel> ExceptionDetails { get; } =
+        log.Exception is { } exception ? [new ExceptionDetailsViewModel(exception)] : [];
+}
+
+public class ExceptionDetailsViewModel
+{
+    public string Header { get; }
+    public string Details { get; }
+
+    public ExceptionDetailsViewModel(Exception exception)
+    {
+        var text = exception.ToString().ReplaceLineEndings("\n");
+        var newline = text.IndexOf('\n');
+
+        if (newline < 0)
+        {
+            Header = text;
+            Details = string.Empty;
+        }
+        else
+        {
+            Header = text[..newline];
+            Details = text[(newline + 1)..];
+        }
+    }
 }
