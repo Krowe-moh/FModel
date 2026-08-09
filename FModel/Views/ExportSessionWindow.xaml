@@ -448,7 +448,6 @@
                                                             <RichTextBox IsReadOnly="True"
                                                                          IsDocumentEnabled="False"
                                                                          MaxHeight="220"
-                                                                         FontFamily="Consolas"
                                                                          FontSize="10"
                                                                          BorderThickness="0"
                                                                          Padding="0"
