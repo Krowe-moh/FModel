@@ -382,14 +382,14 @@ public sealed class UserSettings : ViewModel
         set => SetProperty(ref _assetRightTab, value);
     }
 
-    private Hotkey _assetAddTab = new(Key.OemPlus, ModifierKeys.Control);
+    private Hotkey _assetAddTab = new(Key.T, ModifierKeys.Control);
     public Hotkey AssetAddTab
     {
         get => _assetAddTab;
         set => SetProperty(ref _assetAddTab, value);
     }
 
-    private Hotkey _assetRemoveTab = new(Key.R, ModifierKeys.Control);
+    private Hotkey _assetRemoveTab = new(Key.W, ModifierKeys.Control);
     public Hotkey AssetRemoveTab
     {
         get => _assetRemoveTab;
@@ -431,56 +431,56 @@ public sealed class UserSettings : ViewModel
         set => SetProperty(ref _nextAudio, value);
     }
 
-    private Hotkey _exportData = new(Key.D, ModifierKeys.Control);
+    private Hotkey _exportData = new(Key.None);
     public Hotkey ExportData
     {
         get => _exportData;
         set => SetProperty(ref _exportData, value);
     }
 
-    private Hotkey _exportProperties = new(Key.P, ModifierKeys.Control);
+    private Hotkey _exportProperties = new(Key.None);
     public Hotkey ExportProperties
     {
         get => _exportProperties;
         set => SetProperty(ref _exportProperties, value);
     }
 
-    private Hotkey _exportTextures = new(Key.T, ModifierKeys.Control);
+    private Hotkey _exportTextures = new(Key.None);
     public Hotkey ExportTextures
     {
         get => _exportTextures;
         set => SetProperty(ref _exportTextures, value);
     }
 
-    private Hotkey _exportModels = new(Key.M, ModifierKeys.Control);
+    private Hotkey _exportModels = new(Key.None);
     public Hotkey ExportModels
     {
         get => _exportModels;
         set => SetProperty(ref _exportModels, value);
     }
 
-    private Hotkey _exportWorlds = new(Key.W, ModifierKeys.Control);
+    private Hotkey _exportWorlds = new(Key.None);
     public Hotkey ExportWorlds
     {
         get => _exportWorlds;
         set => SetProperty(ref _exportWorlds, value);
     }
 
-    private Hotkey _exportAnimations = new(Key.N, ModifierKeys.Control);
+    private Hotkey _exportAnimations = new(Key.None);
     public Hotkey ExportAnimations
     {
         get => _exportAnimations;
         set => SetProperty(ref _exportAnimations, value);
     }
 
-    private Hotkey _exportAudio = new(Key.U, ModifierKeys.Control);
+    private Hotkey _exportAudio = new(Key.None);
     public Hotkey ExportAudio
     {
         get => _exportAudio;
         set => SetProperty(ref _exportAudio, value);
     }
 
-    private Hotkey _exportCode = new(Key.C, ModifierKeys.Control);
+    private Hotkey _exportCode = new(Key.None);
     public Hotkey ExportCode
     {
         get => _exportCode;

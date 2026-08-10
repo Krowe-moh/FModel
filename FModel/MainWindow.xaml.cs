@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -7,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using FModel.Extensions;
 using FModel.Services;
 using FModel.Settings;
 using FModel.ViewModels;
@@ -180,21 +182,21 @@ public partial class MainWindow
             };
         }
         else if (_applicationView.Status.IsReady && UserSettings.Default.ExportData.IsTriggered(e.Key))
-            ExportSelected("Save_Data");
+            OnExportHotkey("Save_Data");
         else if (_applicationView.Status.IsReady && UserSettings.Default.ExportProperties.IsTriggered(e.Key))
-            ExportSelected("Save_Properties");
+            OnExportHotkey("Save_Properties");
         else if (_applicationView.Status.IsReady && UserSettings.Default.ExportTextures.IsTriggered(e.Key))
-            ExportSelected("Save_Textures");
+            OnExportHotkey("Save_Textures");
         else if (_applicationView.Status.IsReady && UserSettings.Default.ExportModels.IsTriggered(e.Key))
-            ExportSelected("Save_Models");
+            OnExportHotkey("Save_Models");
         else if (_applicationView.Status.IsReady && UserSettings.Default.ExportWorlds.IsTriggered(e.Key))
-            ExportSelected("Save_Worlds");
+            OnExportHotkey("Save_Worlds");
         else if (_applicationView.Status.IsReady && UserSettings.Default.ExportAnimations.IsTriggered(e.Key))
-            ExportSelected("Save_Animations");
+            OnExportHotkey("Save_Animations");
         else if (_applicationView.Status.IsReady && UserSettings.Default.ExportAudio.IsTriggered(e.Key))
-            ExportSelected("Save_Audio");
+            OnExportHotkey("Save_Audio");
         else if (_applicationView.Status.IsReady && UserSettings.Default.ExportCode.IsTriggered(e.Key))
-            ExportSelected("Save_Code");
+            OnExportHotkey("Save_Code");
         else if (_applicationView.Status.IsReady && UserSettings.Default.FeaturePreviewNewAssetExplorer && UserSettings.Default.SwitchAssetExplorer.IsTriggered(e.Key))
             _applicationView.IsAssetsExplorerVisible = !_applicationView.IsAssetsExplorerVisible;
         else if (UserSettings.Default.AssetAddTab.IsTriggered(e.Key))
@@ -395,13 +397,20 @@ public partial class MainWindow
         childFolder.IsSelected = true;
     }
 
-    private void ExportSelected(string trigger)
+    private void OnExportHotkey(string trigger)
     {
-        var selectedItems = AssetsListName.SelectedItems.Cast<object>().ToArray();
-        if (selectedItems.Length == 0)
+        if (!_applicationView.Status.IsReady || Keyboard.FocusedElement is not DependencyObject focused)
             return;
 
-        _applicationView.RightClickMenuCommand.Execute(_applicationView, new object[] { trigger, selectedItems });
+        IList selection = focused.FindAncestor<TreeView>() == AssetsFolderName
+            ? new[] { AssetsFolderName.SelectedItem }
+            : focused.FindAncestor<ListBox>()?.SelectedItems;
+
+        var exportable = selection?.OfType<object>().Where(static item => item is TreeItem or GameFileViewModel).ToArray() ?? [];
+        if (exportable.Length == 0)
+            return;
+
+        _applicationView.RightClickMenuCommand.Execute(new object[] { trigger, exportable });
     }
 
     private CustomPopupPlacement[] OnQueueToastCustomPopupPlacement(Size popupSize, Size targetSize, Point offset)

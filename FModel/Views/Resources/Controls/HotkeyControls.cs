@@ -1,67 +1,9 @@
-using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using FModel.Framework;
 
 namespace FModel.Views.Resources.Controls;
-
-public class HotkeySetting : Control
-{
-    public string Label
-    {
-        get => (string) GetValue(LabelProperty);
-        set => SetValue(LabelProperty, value);
-    }
-
-    public static readonly DependencyProperty LabelProperty =
-        DependencyProperty.Register(nameof(Label), typeof(string), typeof(HotkeySetting), new PropertyMetadata(string.Empty));
-
-    public Hotkey HotKey
-    {
-        get => (Hotkey) GetValue(HotKeyProperty);
-        set => SetValue(HotKeyProperty, value);
-    }
-
-    public static readonly DependencyProperty HotKeyProperty =
-        DependencyProperty.Register(nameof(HotKey), typeof(Hotkey), typeof(HotkeySetting), new FrameworkPropertyMetadata(new Hotkey(Key.None), FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
-}
-
-public class HotkeyDisplay : ItemsControl
-{
-    public Hotkey HotKey
-    {
-        get => (Hotkey) GetValue(HotKeyProperty);
-        set => SetValue(HotKeyProperty, value);
-    }
-
-    public static readonly DependencyProperty HotKeyProperty =
-        DependencyProperty.Register(nameof(HotKey), typeof(Hotkey), typeof(HotkeyDisplay), new PropertyMetadata(new Hotkey(Key.None), OnHotKeyChanged));
-
-    private static void OnHotKeyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is HotkeyDisplay control)
-            control.ItemsSource = GetKeys(control.HotKey);
-    }
-
-    private static IEnumerable<string> GetKeys(Hotkey hotkey)
-    {
-        if (hotkey.Modifiers.HasFlag(ModifierKeys.Control))
-            yield return "Ctrl";
-
-        if (hotkey.Modifiers.HasFlag(ModifierKeys.Shift))
-            yield return "Shift";
-
-        if (hotkey.Modifiers.HasFlag(ModifierKeys.Alt))
-            yield return "Alt";
-
-        if (hotkey.Modifiers.HasFlag(ModifierKeys.Windows))
-            yield return "Win";
-
-        if (hotkey.Key != Key.None)
-            yield return hotkey.Key.ToString();
-    }
-}
 
 /// <summary>
 /// https://tyrrrz.me/blog/hotkey-editor-control-in-wpf

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using FModel.Extensions;
 using FModel.Services;
 using FModel.Settings;
 using FModel.ViewModels;
@@ -23,7 +24,7 @@ public partial class FolderContextMenuDictionary
         if (sender is not ContextMenu { PlacementTarget: FrameworkElement fe } menu)
             return;
 
-        var listBox = FindAncestor<ListBox>(fe);
+        var listBox = fe.FindAncestor<ListBox>();
         if (listBox != null)
         {
             menu.DataContext = listBox.DataContext;
@@ -31,23 +32,12 @@ public partial class FolderContextMenuDictionary
             return;
         }
 
-        var treeView = FindAncestor<TreeView>(fe);
+        var treeView = fe.FindAncestor<TreeView>();
         if (treeView != null)
         {
             menu.DataContext = treeView.DataContext;
             menu.Tag = new[] { treeView.SelectedItem }.ToList();
         }
-    }
-
-    private static T FindAncestor<T>(DependencyObject current) where T : DependencyObject
-    {
-        while (current != null)
-        {
-            if (current is T t)
-                return t;
-            current = VisualTreeHelper.GetParent(current);
-        }
-        return null;
     }
 
     private void OnFavoriteDirectoryClick(object sender, RoutedEventArgs e)
