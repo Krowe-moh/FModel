@@ -179,6 +179,22 @@ public partial class MainWindow
                 _ => CategoriesSelector.SelectedIndex
             };
         }
+        else if (_applicationView.Status.IsReady && UserSettings.Default.ExportData.IsTriggered(e.Key))
+            ExportSelected("Save_Data");
+        else if (_applicationView.Status.IsReady && UserSettings.Default.ExportProperties.IsTriggered(e.Key))
+            ExportSelected("Save_Properties");
+        else if (_applicationView.Status.IsReady && UserSettings.Default.ExportTextures.IsTriggered(e.Key))
+            ExportSelected("Save_Textures");
+        else if (_applicationView.Status.IsReady && UserSettings.Default.ExportModels.IsTriggered(e.Key))
+            ExportSelected("Save_Models");
+        else if (_applicationView.Status.IsReady && UserSettings.Default.ExportWorlds.IsTriggered(e.Key))
+            ExportSelected("Save_Worlds");
+        else if (_applicationView.Status.IsReady && UserSettings.Default.ExportAnimations.IsTriggered(e.Key))
+            ExportSelected("Save_Animations");
+        else if (_applicationView.Status.IsReady && UserSettings.Default.ExportAudio.IsTriggered(e.Key))
+            ExportSelected("Save_Audio");
+        else if (_applicationView.Status.IsReady && UserSettings.Default.ExportCode.IsTriggered(e.Key))
+            ExportSelected("Save_Code");
         else if (_applicationView.Status.IsReady && UserSettings.Default.FeaturePreviewNewAssetExplorer && UserSettings.Default.SwitchAssetExplorer.IsTriggered(e.Key))
             _applicationView.IsAssetsExplorerVisible = !_applicationView.IsAssetsExplorerVisible;
         else if (UserSettings.Default.AssetAddTab.IsTriggered(e.Key))
@@ -377,6 +393,15 @@ public partial class MainWindow
 
         childFolder.IsExpanded = true;
         childFolder.IsSelected = true;
+    }
+
+    private void ExportSelected(string trigger)
+    {
+        var selectedItems = AssetsListName.SelectedItems.Cast<object>().ToArray();
+        if (selectedItems.Length == 0)
+            return;
+
+        _applicationView.RightClickMenuCommand.Execute(_applicationView, new object[] { trigger, selectedItems });
     }
 
     private CustomPopupPlacement[] OnQueueToastCustomPopupPlacement(Size popupSize, Size targetSize, Point offset)

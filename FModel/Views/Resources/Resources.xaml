@@ -2285,4 +2285,34 @@
         </Style.Triggers>
     </Style>
 
+    <Style TargetType="{x:Type controls:HotkeySetting}">
+        <Setter Property="Height"
+                Value="32" />
+        <Setter Property="HorizontalAlignment"
+                Value="Stretch" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type controls:HotkeySetting}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{TemplateBinding Label}"
+                                   VerticalAlignment="Center" />
+                        <controls:HotkeyTextBox Grid.Column="2"
+                                                Height="26"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                VerticalContentAlignment="Center"
+                                                Style="{StaticResource TextBoxDefaultStyle}"
+                                                HotKey="{Binding HotKey, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>
