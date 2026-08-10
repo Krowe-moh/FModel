@@ -311,7 +311,7 @@ public class ExportSessionViewModel : ViewModel
 
         if (failed > 0)
         {
-            FLogger.Append(ELog.Error, () => FLogger.Text($"Failed to export {failed} asset{(failed == 1 ? "" : "s")}", Constants.WHITE, true));
+            FLogger.Append(ELog.Error, () => FLogger.Text($"Failed to export {failed} asset{(failed == 1 ? "" : "s")}, open the Export Session window for more details.", Constants.WHITE, true));
         }
     }
 
@@ -460,6 +460,7 @@ public class ClassGroupViewModel(string name) : ViewModel
 public class ObjectGroupViewModel(string path) : ViewModel
 {
     public string Path { get; } = path;
+    public string Directory { get; } = path.SubstringBeforeLast('/');
     public string Name { get; } = path.SubstringAfterLast('.');
     public ObservableCollection<LogEntryViewModel> Entries { get; } = [];
 

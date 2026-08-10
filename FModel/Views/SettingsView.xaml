@@ -738,7 +738,7 @@
                                 <Path Fill="{DynamicResource {x:Static adonisUi:Brushes.AccentForegroundBrush}}" Data="{StaticResource KeyboardIcon}" />
                             </Canvas>
                         </Viewbox>
-                        <TextBlock Text="Keybindings" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <TextBlock Text="Hotkeys" HorizontalAlignment="Left" VerticalAlignment="Center" />
                     </StackPanel>
                 </TreeViewItem.Header>
             </TreeViewItem>

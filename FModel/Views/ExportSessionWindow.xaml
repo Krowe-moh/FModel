@@ -212,25 +212,17 @@
                     </Canvas>
                 </Viewbox>
 
-                <Grid Grid.Column="1"
-                      VerticalAlignment="Center">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding Name}"
-                               Foreground="{DynamicResource {x:Static adonisUi:Brushes.ForegroundBrush}}" />
-                    <TextBlock Grid.Column="1"
-                               Margin="5,0,5,0"
-                               VerticalAlignment="Center"
-                               FontSize="9"
-                               Text="{Binding Path}"
-                               Foreground="{DynamicResource {x:Static adonisUi:Brushes.DisabledForegroundBrush}}"
-                               TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding Path}" />
-                </Grid>
+                <TextBlock Grid.Column="1" Margin="0,0,5,0"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding Path}">
+                    <Run Text="{Binding Name, Mode=OneWay}"
+                         Foreground="{DynamicResource {x:Static adonisUi:Brushes.ForegroundBrush}}" />
+                    <Run Text=" - "
+                         Foreground="{DynamicResource {x:Static adonisUi:Brushes.DisabledForegroundBrush}}" />
+                    <Run Text="{Binding Directory, Mode=OneWay}" FontSize="11"
+                         Foreground="{DynamicResource {x:Static adonisUi:Brushes.DisabledForegroundBrush}}" />
+                </TextBlock>
 
                 <Button Grid.Column="2" ToolTip="Remove from queue" Click="OnRemoveFromQueueClick"
                         Visibility="{Binding DataContext.CanExport, RelativeSource={RelativeSource AncestorType=adonisControls:AdonisWindow}, Converter={StaticResource BoolToVisibilityConverter}}"
