@@ -16,7 +16,10 @@ public partial class ExportSessionWindow
     private async void OnExportClick(object sender, RoutedEventArgs e)
     {
         if (sender is Button { DataContext: ExportSessionViewModel { CanExport: true } viewModel })
+        {
+            Tabs.SelectedIndex = 0;
             await viewModel.ExportAsync();
+        }
     }
 
     private void OnOkClick(object sender, RoutedEventArgs e)

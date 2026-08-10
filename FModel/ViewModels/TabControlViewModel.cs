@@ -294,7 +294,7 @@ public class TabItem : ViewModel
         var img = new CTexture[1];
         if (texture is UTexture2DArray textureArray)
         {
-            img = textureArray.DecodeTextureArray(null, UserSettings.Default.CurrentDir.TexturePlatform);
+            img = textureArray.DecodeTextureArray(UserSettings.Default.CurrentDir.TexturePlatform);
             appendLayerNumber = true;
         }
         else
