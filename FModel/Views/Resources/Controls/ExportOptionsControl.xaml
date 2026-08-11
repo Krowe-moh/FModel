@@ -47,14 +47,22 @@
         <Button Grid.Row="0" Grid.Column="4" Content="..." MinWidth="28" Click="OnBrowseOutputDirectory" />
 
         <TextBlock Grid.Row="1" Grid.Column="0" Text="Export Immediately" VerticalAlignment="Center" Margin="0 8 0 0"
-                   Visibility="{Binding ShowExportImmediatelyOption, Converter={StaticResource BoolToVisibilityConverter}}"
-                   ToolTip="Start exporting automatically after all selected assets have been queued." />
-        <CheckBox Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3" Margin="0 8 0 0"
-                  IsChecked="{Binding ExportImmediately, Mode=TwoWay}"
-                  Content="{Binding IsChecked, RelativeSource={RelativeSource Self}, Converter={x:Static converters:BoolToToggleConverter.Instance}}"
-                  Style="{DynamicResource {x:Static adonisUi:Styles.ToggleSwitch}}"
-                  Visibility="{Binding ShowExportImmediatelyOption, Converter={StaticResource BoolToVisibilityConverter}}"
-                  ToolTip="Start exporting automatically after all selected assets have been queued." />
+                   Visibility="{Binding ShowExportImmediatelyOption, Converter={StaticResource BoolToVisibilityConverter}}" />
+        <Grid Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3" Margin="0 8 0 0"
+              Visibility="{Binding ShowExportImmediatelyOption, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <CheckBox Grid.Column="0"
+                      IsChecked="{Binding ExportImmediately, Mode=TwoWay}"
+                      Content="{Binding IsChecked, RelativeSource={RelativeSource Self}, Converter={x:Static converters:BoolToToggleConverter.Instance}}"
+                      Style="{DynamicResource {x:Static adonisUi:Styles.ToggleSwitch}}" />
+            <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="5 0 0 0" FontSize="11"
+                       Foreground="{DynamicResource {x:Static adonisUi:Brushes.DisabledForegroundBrush}}"
+                       Text="Start exporting automatically after all selected assets have been queued." />
+        </Grid>
 
         <Separator Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" Style="{StaticResource CustomSeparator}" Tag="MESH" Margin="0 10 0 10" />
 
@@ -117,12 +125,10 @@
             </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <TextBlock Grid.Row="6" Grid.Column="0" Text="Socket Format" VerticalAlignment="Center" Margin="0 0 0 5"
-                   IsEnabled="{Binding SocketSettingsEnabled}" />
+        <TextBlock Grid.Row="6" Grid.Column="0" Text="Socket Format" VerticalAlignment="Center" Margin="0 0 0 5" />
         <ComboBox Grid.Row="6" Grid.Column="2" Grid.ColumnSpan="3" Margin="0 0 0 5"
                   ItemsSource="{Binding SocketFormats}"
-                  SelectedItem="{Binding SelectedSocketFormat, Mode=TwoWay}"
-                  IsEnabled="{Binding SocketSettingsEnabled}">
+                  SelectedItem="{Binding SelectedSocketFormat, Mode=TwoWay}">
             <ComboBox.ItemTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding Converter={x:Static converters:EnumToStringConverter.Instance}}" />

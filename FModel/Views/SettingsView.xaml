@@ -428,6 +428,15 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -435,24 +444,24 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Left Switch on Directory Tab" VerticalAlignment="Center" Margin="0 0 0 5" />
-                    <controls:HotkeyTextBox Grid.Row="0" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
-                                            HotKey="{Binding DirLeftTab, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Right Switch on Directory Tab" VerticalAlignment="Center" />
-                    <controls:HotkeyTextBox Grid.Row="1" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}"
-                                            HotKey="{Binding DirRightTab, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
-
-                    <Separator Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Style="{StaticResource CustomSeparator}" />
+                    <!-- <TextBlock Grid.Row="0" Grid.Column="0" Text="Left Switch on Directory Tab" VerticalAlignment="Center" Margin="0 0 0 5" /> -->
+                    <!-- <controls:HotkeyTextBox Grid.Row="0" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5" -->
+                    <!--                         HotKey="{Binding DirLeftTab, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" /> -->
+                    <!-- <TextBlock Grid.Row="1" Grid.Column="0" Text="Right Switch on Directory Tab" VerticalAlignment="Center" /> -->
+                    <!-- <controls:HotkeyTextBox Grid.Row="1" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" -->
+                    <!--                         HotKey="{Binding DirRightTab, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" /> -->
+                    <!-- -->
+                    <!-- <Separator Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Style="{StaticResource CustomSeparator}" /> -->
 
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="Switch Asset Explorer" VerticalAlignment="Center" Margin="0 0 0 5" />
                     <controls:HotkeyTextBox Grid.Row="3" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
                                             HotKey="{Binding SwitchAssetExplorer, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Left Switch on Asset Tab" VerticalAlignment="Center" Margin="0 0 0 5" />
-                    <controls:HotkeyTextBox Grid.Row="4" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
-                                            HotKey="{Binding AssetLeftTab, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Right Switch on Asset Tab" VerticalAlignment="Center" Margin="0 0 0 5" />
-                    <controls:HotkeyTextBox Grid.Row="5" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
-                                            HotKey="{Binding AssetRightTab, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <!-- <TextBlock Grid.Row="4" Grid.Column="0" Text="Left Switch on Asset Tab" VerticalAlignment="Center" Margin="0 0 0 5" /> -->
+                    <!-- <controls:HotkeyTextBox Grid.Row="4" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5" -->
+                    <!--                         HotKey="{Binding AssetLeftTab, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" /> -->
+                    <!-- <TextBlock Grid.Row="5" Grid.Column="0" Text="Right Switch on Asset Tab" VerticalAlignment="Center" Margin="0 0 0 5" /> -->
+                    <!-- <controls:HotkeyTextBox Grid.Row="5" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5" -->
+                    <!--                         HotKey="{Binding AssetRightTab, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" /> -->
                     <TextBlock Grid.Row="6" Grid.Column="0" Text="Add Asset Tab" VerticalAlignment="Center" Margin="0 0 0 5" />
                     <controls:HotkeyTextBox Grid.Row="6" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
                                             HotKey="{Binding AssetAddTab, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
@@ -462,20 +471,47 @@
 
                     <Separator Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="3" Style="{StaticResource CustomSeparator}" />
 
-                    <TextBlock Grid.Row="9" Grid.Column="0" Text="Add Audio File" VerticalAlignment="Center" Margin="0 0 0 5" />
+                    <TextBlock Grid.Row="9" Grid.Column="0" Text="Export Raw Data" VerticalAlignment="Center" Margin="0 0 0 5" />
                     <controls:HotkeyTextBox Grid.Row="9" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
-                                            HotKey="{Binding AddAudio, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
-                    <TextBlock Grid.Row="10" Grid.Column="0" Text="Play / Pause Current Audio" VerticalAlignment="Center" Margin="0 0 0 5" />
+                                            HotKey="{Binding ExportData, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="10" Grid.Column="0" Text="Export Properties" VerticalAlignment="Center" Margin="0 0 0 5" />
                     <controls:HotkeyTextBox Grid.Row="10" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
-                                            HotKey="{Binding PlayPauseAudio, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
-                    <TextBlock Grid.Row="11" Grid.Column="0" Text="Previous Audio" VerticalAlignment="Center" Margin="0 0 0 5" />
+                                            HotKey="{Binding ExportProperties, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="11" Grid.Column="0" Text="Export Textures" VerticalAlignment="Center" Margin="0 0 0 5" />
                     <controls:HotkeyTextBox Grid.Row="11" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
-                                            HotKey="{Binding PreviousAudio, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
-                    <TextBlock Grid.Row="12" Grid.Column="0" Text="Next Audio" VerticalAlignment="Center" Margin="0 0 0 5" />
+                                            HotKey="{Binding ExportTextures, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="12" Grid.Column="0" Text="Export Models" VerticalAlignment="Center" Margin="0 0 0 5" />
                     <controls:HotkeyTextBox Grid.Row="12" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
-                                            HotKey="{Binding NextAudio, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
-                    <TextBlock Grid.Row="13" Grid.Column="0" Text="Remove Selected Audio" VerticalAlignment="Center" Margin="0 0 0 5" />
+                                            HotKey="{Binding ExportModels, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="13" Grid.Column="0" Text="Export Worlds" VerticalAlignment="Center" Margin="0 0 0 5" />
                     <controls:HotkeyTextBox Grid.Row="13" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
+                                            HotKey="{Binding ExportWorlds, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="14" Grid.Column="0" Text="Export Animations" VerticalAlignment="Center" Margin="0 0 0 5" />
+                    <controls:HotkeyTextBox Grid.Row="14" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
+                                            HotKey="{Binding ExportAnimations, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="15" Grid.Column="0" Text="Export Audio" VerticalAlignment="Center" Margin="0 0 0 5" />
+                    <controls:HotkeyTextBox Grid.Row="15" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
+                                            HotKey="{Binding ExportAudio, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="16" Grid.Column="0" Text="Export Decompiled Blueprints" VerticalAlignment="Center" />
+                    <controls:HotkeyTextBox Grid.Row="16" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}"
+                                            HotKey="{Binding ExportCode, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+
+                    <Separator Grid.Row="17" Grid.Column="0" Grid.ColumnSpan="3" Style="{StaticResource CustomSeparator}" />
+
+                    <TextBlock Grid.Row="18" Grid.Column="0" Text="Add Audio File" VerticalAlignment="Center" Margin="0 0 0 5" />
+                    <controls:HotkeyTextBox Grid.Row="18" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
+                                            HotKey="{Binding AddAudio, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="19" Grid.Column="0" Text="Play / Pause Current Audio" VerticalAlignment="Center" Margin="0 0 0 5" />
+                    <controls:HotkeyTextBox Grid.Row="19" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
+                                            HotKey="{Binding PlayPauseAudio, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="20" Grid.Column="0" Text="Previous Audio" VerticalAlignment="Center" Margin="0 0 0 5" />
+                    <controls:HotkeyTextBox Grid.Row="20" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
+                                            HotKey="{Binding PreviousAudio, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="21" Grid.Column="0" Text="Next Audio" VerticalAlignment="Center" Margin="0 0 0 5" />
+                    <controls:HotkeyTextBox Grid.Row="21" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
+                                            HotKey="{Binding NextAudio, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="22" Grid.Column="0" Text="Remove Selected Audio" VerticalAlignment="Center" Margin="0 0 0 5" />
+                    <controls:HotkeyTextBox Grid.Row="22" Grid.Column="2" Style="{StaticResource TextBoxDefaultStyle}" Margin="0 0 0 5"
                                             HotKey="{Binding RemoveAudio, Source={x:Static local:Settings.UserSettings.Default}, Mode=TwoWay}" />
                 </Grid>
             </DataTemplate>
@@ -549,14 +585,13 @@
                         ToolTip="Emulate Luaj's permissive parser">
                     </CheckBox>
 
-                    <Separator Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="11" Style="{StaticResource CustomSeparator}" />
+                    <Separator Grid.Row="2"
+                               Grid.Column="0"
+                               Grid.ColumnSpan="11"
+                               Tag="OPCODE MAPPING"
+                               Style="{StaticResource CustomSeparator}" />
 
-                    <TextBlock Grid.Row="3"
-                       Grid.Column="0"
-                       Text="OpcodeMap"
-                       VerticalAlignment="Top"
-                       Margin="0 0 0 5"/>
-                    <TextBox Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="10"
+                    <TextBox Grid.Row="3" Grid.ColumnSpan="12"
                          Margin="0 0 0 5" Height="300"
                          FontSize="14" Padding="8"
                          HorizontalAlignment="Stretch" VerticalAlignment="Top"
@@ -703,7 +738,7 @@
                                 <Path Fill="{DynamicResource {x:Static adonisUi:Brushes.AccentForegroundBrush}}" Data="{StaticResource KeyboardIcon}" />
                             </Canvas>
                         </Viewbox>
-                        <TextBlock Text="Keybindings" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <TextBlock Text="Hotkeys" HorizontalAlignment="Left" VerticalAlignment="Center" />
                     </StackPanel>
                 </TreeViewItem.Header>
             </TreeViewItem>

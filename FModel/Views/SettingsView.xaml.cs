@@ -252,13 +252,15 @@ public partial class SettingsView
         if (sender is not TextBox textBox)
             return;
 
-        string input = textBox.Text?.Trim() ?? string.Empty;
-
+        var input = textBox.Text.Trim();
         if (string.IsNullOrEmpty(input))
-            return;
-
-        if (TryParseKey(input, out ulong parsed))
+        {
+            _applicationView.SettingsView.CriwareDecryptionKey = 0;
+        }
+        else if (TryParseKey(input, out ulong parsed))
+        {
             _applicationView.SettingsView.CriwareDecryptionKey = parsed;
+        }
     }
 
     private static bool TryParseKey(string text, out ulong value)

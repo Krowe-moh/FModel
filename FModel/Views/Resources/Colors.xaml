@@ -58,4 +58,5 @@
     <SolidColorBrush x:Key="RocoKingdomWorldBrush" Color="#fecf4d"></SolidColorBrush>
     <SolidColorBrush x:Key="DeltaForceBrush" Color="LightGreen"></SolidColorBrush>
     <SolidColorBrush x:Key="BatmanBrush" Color="Gold"></SolidColorBrush>
+    <SolidColorBrush x:Key="ArcSysBrush" Color="Red"></SolidColorBrush>
 </ResourceDictionary>

@@ -131,8 +131,25 @@
             </Setter>
         </Style>
 
+        <Style x:Key="ExceptionTreeViewItemStyle"
+               TargetType="TreeViewItem">
+            <Setter Property="HorizontalContentAlignment"
+                    Value="Stretch" />
+            <Setter Property="Focusable"
+                    Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TreeViewItem">
+                        <ContentPresenter ContentSource="Header"
+                                          HorizontalAlignment="Stretch"
+                                          Margin="0,2,8,6" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <DataTemplate x:Key="LogEntryTemplate" DataType="{x:Type vm:LogEntryViewModel}">
-            <Grid Margin="0 1" ToolTip="{Binding Exception}">
+            <Grid Margin="0 1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -183,7 +200,6 @@
             <Grid VerticalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -196,11 +212,19 @@
                     </Canvas>
                 </Viewbox>
 
-                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
-                           Foreground="{DynamicResource {x:Static adonisUi:Brushes.ForegroundBrush}}"
-                           ToolTip="{Binding Path}" />
+                <TextBlock Grid.Column="1" Margin="0,0,5,0"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding Path}">
+                    <Run Text="{Binding Name, Mode=OneWay}"
+                         Foreground="{DynamicResource {x:Static adonisUi:Brushes.ForegroundBrush}}" />
+                    <Run Text=" - "
+                         Foreground="{DynamicResource {x:Static adonisUi:Brushes.DisabledForegroundBrush}}" />
+                    <Run Text="{Binding Directory, Mode=OneWay}" FontSize="11"
+                         Foreground="{DynamicResource {x:Static adonisUi:Brushes.DisabledForegroundBrush}}" />
+                </TextBlock>
 
-                <Button Grid.Column="3" ToolTip="Remove from queue" Click="OnRemoveFromQueueClick"
+                <Button Grid.Column="2" ToolTip="Remove from queue" Click="OnRemoveFromQueueClick"
                         Visibility="{Binding DataContext.CanExport, RelativeSource={RelativeSource AncestorType=adonisControls:AdonisWindow}, Converter={StaticResource BoolToVisibilityConverter}}"
                         HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Padding="0" Margin="0" Focusable="False"
                         Foreground="#EF5350" Style="{DynamicResource {x:Static adonisUi:Styles.ToolbarButton}}">
@@ -212,7 +236,7 @@
                     </Viewbox>
                 </Button>
 
-                <Button Grid.Column="4" ToolTip="Open in Explorer" Click="OnOpenInExplorerClick"
+                <Button Grid.Column="3" ToolTip="Open in Explorer" Click="OnOpenInExplorerClick"
                         Tag="{Binding FirstFilePath}"
                         Visibility="{Binding HasFilePath, Converter={StaticResource BoolToVisibilityConverter}}"
                         Style="{DynamicResource {x:Static adonisUi:Styles.ToolbarButton}}"
@@ -362,7 +386,7 @@
 
         <ProgressBar Grid.Row="1" Height="5" Margin="0 5 0 5" Maximum="1" Value="{Binding ProgressValue, Mode=OneWay, FallbackValue=0.5}" />
 
-        <TabControl Grid.Row="2" adonisExtensions:LayerExtension.Layer="2"
+        <TabControl x:Name="Tabs" Grid.Row="2" adonisExtensions:LayerExtension.Layer="2"
                     Background="{DynamicResource {x:Static adonisUi:Brushes.Layer0BackgroundBrush}}">
             <TabItem Header="Export Logs">
                 <Grid>
@@ -389,7 +413,8 @@
                               VirtualizingPanel.IsVirtualizing="True"
                               VirtualizingPanel.VirtualizationMode="Recycling"
                               VirtualizingPanel.ScrollUnit="Item"
-                              ScrollViewer.CanContentScroll="True">
+                              ScrollViewer.CanContentScroll="True"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <TreeView.ItemContainerStyle>
                             <Style TargetType="TreeViewItem" BasedOn="{StaticResource StretchTreeViewItemStyle}">
                                 <Style.Triggers>
@@ -414,9 +439,43 @@
                                                           HorizontalAlignment="Stretch" />
 
                                         <HierarchicalDataTemplate.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type vm:LogEntryViewModel}">
-                                                <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource LogEntryTemplate}" />
-                                            </DataTemplate>
+                                            <HierarchicalDataTemplate DataType="{x:Type vm:LogEntryViewModel}"
+                                                                      ItemsSource="{Binding ExceptionDetails}"
+                                                                      ItemContainerStyle="{StaticResource ExceptionTreeViewItemStyle}">
+                                                <ContentPresenter Content="{Binding}"
+                                                                  ContentTemplate="{StaticResource LogEntryTemplate}"
+                                                                  HorizontalAlignment="Stretch" />
+                                                <HierarchicalDataTemplate.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:ExceptionDetailsViewModel}">
+                                                        <Border Padding="8"
+                                                                CornerRadius="3"
+                                                                BorderThickness="2,0,0,0"
+                                                                BorderBrush="#EF5350"
+                                                                Background="{DynamicResource {x:Static adonisUi:Brushes.Layer1BackgroundBrush}}">
+                                                            <RichTextBox IsReadOnly="True"
+                                                                         IsDocumentEnabled="False"
+                                                                         MaxHeight="220"
+                                                                         FontSize="10"
+                                                                         BorderThickness="0"
+                                                                         Padding="0"
+                                                                         Background="Transparent"
+                                                                         VerticalScrollBarVisibility="Auto"
+                                                                         HorizontalScrollBarVisibility="Disabled">
+                                                                <FlowDocument PagePadding="0">
+                                                                    <Paragraph Margin="0">
+                                                                        <Run Text="{Binding Header, Mode=OneWay}"
+                                                                             FontWeight="SemiBold"
+                                                                             Foreground="#EF5350" />
+                                                                        <LineBreak />
+                                                                        <Run Text="{Binding Details, Mode=OneWay}"
+                                                                             Foreground="{DynamicResource {x:Static adonisUi:Brushes.ForegroundBrush}}" />
+                                                                    </Paragraph>
+                                                                </FlowDocument>
+                                                            </RichTextBox>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </HierarchicalDataTemplate.ItemTemplate>
+                                            </HierarchicalDataTemplate>
                                         </HierarchicalDataTemplate.ItemTemplate>
                                     </HierarchicalDataTemplate>
                                 </HierarchicalDataTemplate.ItemTemplate>

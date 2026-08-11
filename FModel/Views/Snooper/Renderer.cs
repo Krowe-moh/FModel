@@ -160,9 +160,10 @@ public class Renderer : IDisposable
         model.Skeleton.Animate(animSet);
         Options.AddAnimation(animation);
 
-        foreach (var notifyEvent in animBase.Notifies)
+        foreach (var notifyEvent in animBase.Notifies ?? [])
         {
-            if (!notifyEvent.NotifyStateClass.TryLoad(out UObject notifyClass) ||
+            if (notifyEvent.NotifyStateClass is null ||
+                !notifyEvent.NotifyStateClass.TryLoad(out UObject notifyClass) ||
                 !notifyClass.TryGetValue(out UObject export, "SkeletalMeshProp", "StaticMeshProp", "Mesh", "SkeletalMeshTemplate"))
                 continue;
 
