@@ -209,7 +209,7 @@ public class CUE4ParseViewModel : ViewModel
                     EGame.GAME_BlackStigma => new DefaultFileProvider(gameDirectory, SearchOption.AllDirectories, versionContainer, StringComparer.Ordinal),
                     EGame.GAME_HonorofKingsWorld => new HoKWDefaultFileProvider(gameDirectory, SearchOption.AllDirectories, versionContainer, pathComparer),
                     EGame.GAME_LordOfMysteries => new LoMDefaultFileProvider(gameDirectory, SearchOption.AllDirectories, versionContainer, pathComparer),
-                    EGame.GAME_ArcRaiders => new TheiaFileProvider(gameDirectory, SearchOption.AllDirectories, versionContainer, pathComparer),
+                    EGame.GAME_ArcRaiders or EGame.GAME_MARVELTokonFightingSouls or EGame.GAME_Highguard => new TheiaFileProvider(gameDirectory, SearchOption.AllDirectories, versionContainer, pathComparer),
                     _ => new DefaultFileProvider(gameDirectory, SearchOption.AllDirectories, versionContainer, pathComparer)
                 };
 
