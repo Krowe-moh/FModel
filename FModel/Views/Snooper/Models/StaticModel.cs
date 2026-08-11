@@ -136,9 +136,9 @@ public class StaticModel : UModel<MeshVertex>
         }
 
         Box = staticMesh.Bounds * Constants.SCALE_DOWN_RATIO;
-        for (int i = 0; i < export.Sockets.Length; i++)
+        foreach (var s in export.Sockets ?? [])
         {
-            if (export.Sockets[i].Load<UStaticMeshSocket>() is not { } socket) continue;
+            if (s.Load<UStaticMeshSocket>() is not { } socket) continue;
             Sockets.Add(new Socket(socket));
         }
     }
