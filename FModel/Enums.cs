@@ -166,6 +166,7 @@ public enum EAssetCategory : uint
         RocoKingdomWorld = GameSpecific + 3,
         DeltaForce = GameSpecific + 4,
         LegoBatman = GameSpecific + 5,
+        ArcSys = GameSpecific + 6,
 }
 
 public enum EUnluacMode
