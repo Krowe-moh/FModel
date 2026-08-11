@@ -34,6 +34,7 @@ public class FileToGeometryConverter : IMultiValueConverter
             EAssetCategory.SkeletalMesh => ("SkeletalMeshIconAlt", "NeutralBrush"),
             EAssetCategory.CustomizableObject => ("StaticMeshIconAlt", "CustomizableObjectBrush"),
             EAssetCategory.NaniteDisplacedMesh => ("StaticMeshIconAlt", "NaniteDisplacedMeshBrush"),
+            EAssetCategory.GeometryCollection => ("GeometryCollectionIcon", "NeutralBrush"),
 
             EAssetCategory.Material => ("MaterialIcon", "MaterialBrush"),
             EAssetCategory.MaterialEditorData => ("MaterialIcon", "MaterialEditorBrush"),

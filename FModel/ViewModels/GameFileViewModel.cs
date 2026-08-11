@@ -26,6 +26,7 @@ using CUE4Parse.UE4.Assets.Exports.Engine.Font;
 using CUE4Parse.UE4.Assets.Exports.Fmod;
 using CUE4Parse.UE4.Assets.Exports.FMod;
 using CUE4Parse.UE4.Assets.Exports.Foliage;
+using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
 using CUE4Parse.UE4.Assets.Exports.Internationalization;
 using CUE4Parse.UE4.Assets.Exports.LevelSequence;
 using CUE4Parse.UE4.Assets.Exports.Material;
@@ -217,6 +218,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 USkeletalMesh => (EAssetCategory.SkeletalMesh, EBulkType.Meshes),
                 UCustomizableObject => (EAssetCategory.CustomizableObject, EBulkType.None),
                 UNaniteDisplacedMesh => (EAssetCategory.NaniteDisplacedMesh, EBulkType.None),
+                UGeometryCollection => (EAssetCategory.GeometryCollection, EBulkType.None),
 
                 UTexture => (EAssetCategory.Texture, EBulkType.Textures),
 

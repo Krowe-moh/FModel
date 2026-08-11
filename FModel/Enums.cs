@@ -130,6 +130,7 @@ public enum EAssetCategory : uint
         SkeletalMesh = Mesh + 2,
         CustomizableObject = Mesh + 3,
         NaniteDisplacedMesh = Mesh + 4,
+        GeometryCollection = Mesh + 5,
     Texture = AssetCategoryExtensions.CategoryBase + (3 << 16),
     Materials = AssetCategoryExtensions.CategoryBase + (4 << 16),
         Material = Materials + 1,
