@@ -11,6 +11,7 @@ using CUE4Parse.GameTypes.Borderlands3.Assets.Exports;
 using CUE4Parse.GameTypes.Borderlands4.Assets.Exports;
 using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
 using CUE4Parse.GameTypes.LegoBatman.Assets;
+using CUE4Parse.GameTypes.RED.Assets.Exports;
 using CUE4Parse.GameTypes.SMG.UE4.Assets.Exports.Wwise;
 using CUE4Parse.GameTypes.SMG.UE4.Assets.Objects;
 using CUE4Parse.GameTypes.SquareEnix.UE4.Assets.Exports;
@@ -26,6 +27,7 @@ using CUE4Parse.UE4.Assets.Exports.Engine.Font;
 using CUE4Parse.UE4.Assets.Exports.Fmod;
 using CUE4Parse.UE4.Assets.Exports.FMod;
 using CUE4Parse.UE4.Assets.Exports.Foliage;
+using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
 using CUE4Parse.UE4.Assets.Exports.Internationalization;
 using CUE4Parse.UE4.Assets.Exports.LevelSequence;
 using CUE4Parse.UE4.Assets.Exports.Material;
@@ -170,7 +172,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
         if (Asset.Extension is "umap")
         {
             AssetCategory = EAssetCategory.World;
-            AssetActions = EBulkType.Meshes | EBulkType.Textures | EBulkType.Audio | EBulkType.Code;
+            AssetActions = EBulkType.Worlds | EBulkType.Textures | EBulkType.Audio | EBulkType.Code;
             ResolvedAssetType = "World";
             Resolved |= EResolveCompute.Preview;
             return Task.CompletedTask;
@@ -217,6 +219,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 USkeletalMesh => (EAssetCategory.SkeletalMesh, EBulkType.Meshes),
                 UCustomizableObject => (EAssetCategory.CustomizableObject, EBulkType.None),
                 UNaniteDisplacedMesh => (EAssetCategory.NaniteDisplacedMesh, EBulkType.None),
+                UGeometryCollection => (EAssetCategory.GeometryCollection, EBulkType.None),
 
                 UTexture => (EAssetCategory.Texture, EBulkType.Textures),
 
@@ -265,6 +268,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 UGbxGraphAsset or UDialogScriptData or UDialogPerformanceData when GameVersion is EGame.GAME_Borderlands4 or EGame.GAME_Borderlands3 => (EAssetCategory.Borderlands, EBulkType.Audio), // Borderlands 4; Borderlands 3;
                 UFaceFXAnimSet when GameVersion is EGame.GAME_Borderlands4 => (EAssetCategory.Borderlands, EBulkType.Audio), // Borderlands 4;
                 UWubAudioEvent or UWubDialogueEvent when GameVersion is EGame.GAME_LEGOBatmanLegacyoftheDarkKnight => (EAssetCategory.LegoBatman, EBulkType.Audio), // Lego Batman: Legacy of the Dark Knight;
+                UREDBinaryObject => (EAssetCategory.ArcSys, EBulkType.None), // Arc System Works games;
 
                 _ => (EAssetCategory.All, EBulkType.None),
             };

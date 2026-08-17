@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using CUE4Parse_Conversion.Options;
 using CUE4Parse.FileProvider.Objects;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.Utils;
@@ -113,7 +114,7 @@ public class TabImage : ViewModel
         else
         {
             ImageBuffer = imageData;
-            ExportName += "." + (NoAlpha ? "jpg" : "png");
+            ExportName += "." + (NoAlpha || UserSettings.Default.TextureExportFormat == ETextureFormat.Jpeg ? "jpg" : "png");
         }
 
         using var stream = new MemoryStream(imageData);
@@ -132,8 +133,6 @@ public class TabImage : ViewModel
 
 public class TabItem : ViewModel
 {
-    public string ParentExportType { get; private set; }
-
     private GameFile _entry;
     public GameFile Entry
     {
@@ -267,10 +266,9 @@ public class TabItem : ViewModel
     private GoToCommand _goToCommand;
     public GoToCommand GoToCommand => _goToCommand ??= new GoToCommand(null);
 
-    public TabItem(GameFile entry, string parentExportType)
+    public TabItem(GameFile entry)
     {
         Entry = entry;
-        ParentExportType = parentExportType;
         _images = new ObservableCollection<TabImage>();
     }
 
@@ -278,7 +276,6 @@ public class TabItem : ViewModel
     {
         Entry = entry;
         TitleExtra = string.Empty;
-        ParentExportType = string.Empty;
         ScrollTrigger = null;
         Application.Current.Dispatcher.Invoke(() =>
         {
@@ -472,7 +469,7 @@ public class TabControlViewModel : ViewModel
 
     public void AddTab() => AddTab("New Tab");
     public void AddTab(string title) => AddTab(new FakeGameFile(title));
-    public void AddTab(GameFile entry, string parentExportType = null)
+    public void AddTab(GameFile entry)
     {
         if (SelectedTab?.Header == "New Tab")
         {
@@ -483,7 +480,7 @@ public class TabControlViewModel : ViewModel
         if (!CanAddTabs) return;
         Application.Current.Dispatcher.Invoke(() =>
         {
-            _tabItems.Add(new TabItem(entry, parentExportType ?? string.Empty));
+            _tabItems.Add(new TabItem(entry));
             SelectedTab = _tabItems.Last();
         });
     }
@@ -520,8 +517,16 @@ public class TabControlViewModel : ViewModel
     }
 
     public event EventHandler OnTabRemove;
-    public void GoLeftTab() => SelectedTab = _tabItems.Previous(SelectedTab);
-    public void GoRightTab() => SelectedTab = _tabItems.Next(SelectedTab);
+    public void GoLeftTab()
+    {
+        if (_tabItems.Count > 0)
+            SelectedTab = _tabItems.Previous(SelectedTab);
+    }
+    public void GoRightTab()
+    {
+        if (_tabItems.Count > 0)
+            SelectedTab = _tabItems.Next(SelectedTab);
+    }
 
     public void RemoveOtherTabs(TabItem tab)
     {

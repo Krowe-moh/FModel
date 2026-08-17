@@ -109,6 +109,7 @@ public enum EBulkType
     Audio =         1 << 5,
     Code =          1 << 6,
     Raw =           1 << 7,
+    Worlds =        1 << 8,
 }
 
 public enum EAssetCategory : uint
@@ -129,6 +130,7 @@ public enum EAssetCategory : uint
         SkeletalMesh = Mesh + 2,
         CustomizableObject = Mesh + 3,
         NaniteDisplacedMesh = Mesh + 4,
+        GeometryCollection = Mesh + 5,
     Texture = AssetCategoryExtensions.CategoryBase + (3 << 16),
     Materials = AssetCategoryExtensions.CategoryBase + (4 << 16),
         Material = Materials + 1,
@@ -164,10 +166,17 @@ public enum EAssetCategory : uint
         RocoKingdomWorld = GameSpecific + 3,
         DeltaForce = GameSpecific + 4,
         LegoBatman = GameSpecific + 5,
+        ArcSys = GameSpecific + 6,
 }
 
 public enum EUnluacMode
 {
     Decompile,
     Disassemble,
+}
+
+public enum EExplorerViewMode
+{
+    Grid,
+    List
 }

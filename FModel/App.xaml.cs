@@ -11,7 +11,9 @@ using CUE4Parse;
 using FModel.Framework;
 using FModel.Services;
 using FModel.Settings;
+using FModel.Views.Snooper;
 using Newtonsoft.Json;
+using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
 using MessageBox = AdonisUI.Controls.MessageBox;
 using MessageBoxImage = AdonisUI.Controls.MessageBoxImage;
@@ -110,19 +112,29 @@ public partial class App
         Directory.CreateDirectory(Path.Combine(UserSettings.Default.OutputDirectory, "Logs"));
         CacheManager.EnsureDirectories();
 
-        const string template = "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Enriched}: {Message:lj}{NewLine}{Exception}";
+#if DEBUG
+        var filePath = Path.Combine(UserSettings.Default.OutputDirectory, "Logs", $"FModel-Debug-Log-{DateTime.Now:yyyy-MM-dd}.log");
+#else
+        var filePath = Path.Combine(UserSettings.Default.OutputDirectory, "Logs", $"FModel-Log-{DateTime.Now:yyyy-MM-dd}.log");
+#endif
+        const string template1 = "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Enriched}: {Message:lj}{NewLine}{Exception}";
+        const string template2 = "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] [{ClassName}] {ObjectPath}: {Message:lj}{NewLine}{Exception}";
         Log.Logger = new LoggerConfiguration()
 #if DEBUG
             .Enrich.With<SourceEnricher>()
             .MinimumLevel.Verbose()
-            .WriteTo.Console(outputTemplate: template, theme: AnsiConsoleTheme.Literate)
-            .WriteTo.File(outputTemplate: template,
-                path: Path.Combine(UserSettings.Default.OutputDirectory, "Logs", $"FModel-Debug-Log-{DateTime.Now:yyyy-MM-dd}.log"))
 #else
             .Enrich.With<CallerEnricher>()
-            .WriteTo.File(outputTemplate: template,
-                path: Path.Combine(UserSettings.Default.OutputDirectory, "Logs", $"FModel-Log-{DateTime.Now:yyyy-MM-dd}.log"))
 #endif
+            .WriteTo.Logger(lc => lc
+                .Filter.ByExcluding(IsConversionLibrary)
+                .WriteTo.Console(outputTemplate: template1, theme: AnsiConsoleTheme.Literate)
+                .WriteTo.File(outputTemplate: template1, path: filePath, shared: true))
+            .WriteTo.Logger(lc => lc
+                .Filter.ByIncludingOnly(IsConversionLibrary)
+                .WriteTo.Console(outputTemplate: template2, theme: AnsiConsoleTheme.Literate)
+                .WriteTo.File(outputTemplate: template2, path: filePath, shared: true))
+            .MinimumLevel.Override("CUE4Parse_Conversion", LogEventLevel.Verbose).WriteTo.Sink(ImGuiSink.Instance)
             .CreateLogger();
 
         CacheManager.MigrateLegacyFiles();
@@ -130,6 +142,10 @@ public partial class App
         Log.Information("{OS}", GetOperatingSystemProductName());
         Log.Information("{RuntimeVer}", RuntimeInformation.FrameworkDescription);
         Log.Information("Culture {SysLang}", CultureInfo.CurrentCulture);
+
+        static bool IsConversionLibrary(LogEvent e) =>
+            e.Properties.TryGetValue("SourceContext", out var sc) &&
+            sc.ToString().Contains("CUE4Parse_Conversion");
     }
 
     private void AppExit(object sender, ExitEventArgs e)
