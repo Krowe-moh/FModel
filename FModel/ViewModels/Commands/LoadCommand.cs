@@ -6,7 +6,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using AdonisUI.Controls;
 using CUE4Parse.FileProvider.Objects;
 using CUE4Parse.UE4.Readers;

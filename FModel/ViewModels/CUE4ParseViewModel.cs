@@ -11,6 +11,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using AdonisUI.Controls;
+using CUE4Parse_Conversion.Exporters;
+using CUE4Parse_Conversion.Sounds;
 using CUE4Parse;
 using CUE4Parse.Compression;
 using CUE4Parse.Encryption.Aes;
@@ -67,8 +69,6 @@ using CUE4Parse.UE4.Shaders;
 using CUE4Parse.UE4.Versions;
 using CUE4Parse.UE4.Wwise;
 using CUE4Parse.Utils;
-using CUE4Parse_Conversion.Exporters;
-using CUE4Parse_Conversion.Sounds;
 using EpicManifestParser;
 using EpicManifestParser.UE;
 using FModel.Creator;
@@ -82,6 +82,7 @@ using FModel.Views.Resources.Controls;
 using FModel.Views.Snooper;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using Serilog;
@@ -134,7 +135,7 @@ public class CUE4ParseViewModel : ViewModel
                     new GameWindowSettings { UpdateFrequency = htz },
                     new NativeWindowSettings
                     {
-                        ClientSize = new OpenTK.Mathematics.Vector2i(
+                        ClientSize = new Vector2i(
                             Convert.ToInt32(SystemParameters.MaximizedPrimaryScreenWidth * .75 * scale),
                             Convert.ToInt32(SystemParameters.MaximizedPrimaryScreenHeight * .85 * scale)),
                         NumberOfSamples = Constants.SAMPLES_COUNT,

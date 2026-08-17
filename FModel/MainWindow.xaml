@@ -384,8 +384,7 @@
                                       Style="{StaticResource AssetsFolderTreeView}"
                                       SelectedItemChanged="OnAssetsTreeSelectedItemChanged"
                                       PreviewKeyDown="OnFoldersPreviewKeyDown"
-                                      PreviewMouseDoubleClick="OnAssetsTreeMouseDoubleClick">
-                            </TreeView>
+                                      PreviewMouseDoubleClick="OnAssetsTreeMouseDoubleClick" />
                             <Separator Grid.Row="3" Style="{StaticResource CustomSeparator}" Tag="INFORMATION" />
                             <StackPanel Grid.Row="4" Orientation="Vertical" Margin="0 0 0 5">
                                 <Grid HorizontalAlignment="Stretch">
