@@ -131,12 +131,6 @@ public partial class MainWindow
             }),
             UserSettings.Default.DecompileLua ? ApplicationViewModel.InitUnluac() : Task.CompletedTask
         ).ConfigureAwait(false);
-
-#if DEBUG
-        // await _threadWorkerView.Begin(cancellationToken =>
-        //     _applicationView.CUE4Parse.Extract(cancellationToken,
-        //         _applicationView.CUE4Parse.Provider["Marvel/Content/Marvel/Wwise/Assets/Events/Music/music_new/event/Entry.uasset"]));
-#endif
     }
 
     private void OnGridSplitterDoubleClick(object sender, MouseButtonEventArgs e)
