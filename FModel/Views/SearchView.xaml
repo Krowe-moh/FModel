@@ -91,7 +91,7 @@
                             </TextBlock>
                         </Grid>
                         <ListView Grid.Row="1" x:Name="SearchListView" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
-                                      ScrollViewer.CanContentScroll="True" ItemsSource="{Binding SearchTab.SearchResultsView, IsAsync=True}">
+                                      ScrollViewer.CanContentScroll="True" ItemsSource="{Binding SearchTab.SearchResults, IsAsync=True}">
                             <ListView.Resources>
                                 <Style TargetType="{x:Type ListViewItem}" BasedOn="{StaticResource {x:Type ListViewItem}}">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -506,7 +506,7 @@
                                       VirtualizingPanel.IsVirtualizing="True"
                                       VirtualizingPanel.VirtualizationMode="Recycling"
                                       ScrollViewer.CanContentScroll="True"
-                                      ItemsSource="{Binding RefTab.SearchResultsView, IsAsync=True}">
+                                      ItemsSource="{Binding RefTab.SearchResults, IsAsync=True}">
                             <ListView.Resources>
                                 <Style TargetType="{x:Type ListViewItem}" BasedOn="{StaticResource {x:Type ListViewItem}}">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
