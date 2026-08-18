@@ -218,6 +218,14 @@ public class GameSelectorViewModel : ViewModel
         yield return GetRockstarGamesGame("GTA San Andreas - Definitive Edition", "\\Gameface\\Content\\Paks", EGame.GAME_GTATheTrilogyDefinitiveEdition);
         yield return GetRockstarGamesGame("GTA Vice City - Definitive Edition", "\\Gameface\\Content\\Paks", EGame.GAME_GTATheTrilogyDefinitiveEdition);
         yield return GetLevelInfiniteGame("tof_launcher", "\\Hotta\\Content\\Paks", EGame.GAME_TowerOfFantasy);
+
+        foreach (var game in SteamDetection.GetSteamGames())
+        {
+            if (!TryDetectUeVersion(game.GameRoot, out var ueVersion, out var detectedDir))
+                continue;
+
+            yield return DirectorySettings.Default(game.Name, detectedDir ?? game.GameRoot, ue: ueVersion);
+        }
     }
 
     private LauncherInstalled _launcherInstalled;
@@ -342,6 +350,7 @@ public class GameSelectorViewModel : ViewModel
     private class Installation
     {
         public string InstallLocation;
+        public string NamespaceId;
         public string AppName;
         public string AppVersion;
     }
@@ -395,6 +404,7 @@ public class GameSelectorViewModel : ViewModel
 
         public static AppInfo GetSteamGameById(int id) => _steamApps.FirstOrDefault(app => app.Id == id.ToString());
 
+        public static IEnumerable<AppInfo> GetSteamApps() => _steamApps;
         private static List<AppInfo> GetSteamApps(IEnumerable<string> steamLibs)
         {
             var apps = new List<AppInfo>();
@@ -407,6 +417,17 @@ public class GameSelectorViewModel : ViewModel
             }
 
             return apps;
+        }
+
+        public static IEnumerable<AppInfo> GetSteamGames()
+        {
+            foreach (var app in GetSteamApps())
+            {
+                if (!Directory.Exists(app.GameRoot) || !Directory.EnumerateDirectories(app.GameRoot, "Paks", SearchOption.AllDirectories).Any()) // TODO: remove paks check and maybe do a better way
+                    continue;
+
+                yield return app;
+            }
         }
 
         private static AppInfo GetAppInfo(string appMetaFile)
