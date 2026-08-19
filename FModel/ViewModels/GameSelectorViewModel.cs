@@ -99,7 +99,7 @@ public class GameSelectorViewModel : ViewModel
             }
             else
             {
-                Log.Warning("No Paks folder found under \"{GameDirectory}\".", gameDirectory);
+                // Log.Warning("No Paks folder found under \"{GameDirectory}\".", gameDirectory);
                 ueVersion = EGame.GAME_UE4_LATEST;
                 newGameDirectory = targetGameDir;
                 return false;
