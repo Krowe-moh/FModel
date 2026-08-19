@@ -45,10 +45,15 @@ public class GameSelectorViewModel : ViewModel
     private readonly ObservableCollection<DirectorySettings> _detectedDirectories;
     public ReadOnlyObservableCollection<DirectorySettings> DetectedDirectories { get; }
     public ReadOnlyObservableCollection<EGame> UeGames { get; }
-
+    private readonly LauncherInstalled _launcherInstalled;
     public GameSelectorViewModel(string gameDirectory)
     {
-        _detectedDirectories = new ObservableCollection<DirectorySettings>(EnumerateDetectedGames().Where(x => x != null));
+        _launcherInstalled = GetDriveLauncherInstalls<LauncherInstalled>("ProgramData\\Epic\\UnrealEngineLauncher\\LauncherInstalled.dat");
+        _detectedDirectories = new ObservableCollection<DirectorySettings>(EnumerateDetectedGames()
+            .Where(x => x != null)
+            .GroupBy(x => x.GameDirectory, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First()));
+
         foreach (var dir in UserSettings.Default.PerDirectory.Values.Where(x => x.IsManual))
         {
             _detectedDirectories.Add((DirectorySettings) dir.Clone());
@@ -91,6 +96,13 @@ public class GameSelectorViewModel : ViewModel
             {
                 Log.Warning("Selected directory \"{GameDirectory}\" does not end with \"Paks\". Looking in \"{PaksDir}\" instead.", targetGameDir, paksDir);
                 targetGameDir = paksDir;
+            }
+            else
+            {
+                Log.Warning("No Paks folder found under \"{GameDirectory}\".", gameDirectory);
+                ueVersion = EGame.GAME_UE4_LATEST;
+                newGameDirectory = targetGameDir;
+                return false;
             }
 
             if (Directory.GetFiles(gameDirectory, "*.exe") is { Length: 1 } exe && TryGetUeVersionFromExe(exe[0], out ueVersion))
@@ -189,6 +201,11 @@ public class GameSelectorViewModel : ViewModel
         SelectedDirectory = DetectedDirectories.Last();
     }
 
+    private static bool IsUuidNamespace(string ns)
+    {
+        return Guid.TryParseExact(ns, "N", out _);
+    }
+
     private IEnumerable<EGame> EnumerateUeGames()
         => Enum.GetValues<EGame>()
             .GroupBy(value => (int)value)
@@ -219,7 +236,21 @@ public class GameSelectorViewModel : ViewModel
         yield return GetRockstarGamesGame("GTA Vice City - Definitive Edition", "\\Gameface\\Content\\Paks", EGame.GAME_GTATheTrilogyDefinitiveEdition);
         yield return GetLevelInfiniteGame("tof_launcher", "\\Hotta\\Content\\Paks", EGame.GAME_TowerOfFantasy);
 
-        foreach (var game in SteamDetection.GetSteamGames())
+        foreach (var install in (_launcherInstalled?.InstallationList ?? []).Take(30)) // First 30 games only if a user has hundreds, it will be slow.
+        {
+            if (!IsUuidNamespace(install.NamespaceId) || !IsUuidNamespace(install.AppName)) // No official Epic games apps / apps with no name (needs api calls)
+                continue;
+
+            if (!Directory.Exists(install.InstallLocation))
+                continue;
+
+            if (!TryDetectUeVersion(install.InstallLocation, out var ueVersion, out var detectedDir))
+                continue;
+
+            yield return DirectorySettings.Default(install.AppName, detectedDir ?? install.InstallLocation, ue: ueVersion);
+        }
+
+        foreach (var game in SteamDetection.GetSteamGames().Take(30))
         {
             if (!TryDetectUeVersion(game.GameRoot, out var ueVersion, out var detectedDir))
                 continue;
@@ -228,10 +259,8 @@ public class GameSelectorViewModel : ViewModel
         }
     }
 
-    private LauncherInstalled _launcherInstalled;
     private DirectorySettings GetUnrealEngineGame(string gameName, string pakDirectory, EGame ueVersion)
     {
-        _launcherInstalled ??= GetDriveLauncherInstalls<LauncherInstalled>("ProgramData\\Epic\\UnrealEngineLauncher\\LauncherInstalled.dat");
         if (_launcherInstalled?.InstallationList != null)
         {
             foreach (var installationList in _launcherInstalled.InstallationList)
@@ -423,7 +452,7 @@ public class GameSelectorViewModel : ViewModel
         {
             foreach (var app in GetSteamApps())
             {
-                if (!Directory.Exists(app.GameRoot) || !Directory.EnumerateDirectories(app.GameRoot, "Paks", SearchOption.AllDirectories).Any()) // TODO: remove paks check and maybe do a better way
+                if (!Directory.Exists(app.GameRoot))
                     continue;
 
                 yield return app;
