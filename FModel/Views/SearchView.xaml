@@ -450,7 +450,7 @@
                                     </Canvas>
                                 </Viewbox>
                             </Grid>
-                            <TextBox x:Name="RefSearchTextBox" Grid.Column="0" Grid.ColumnSpan="2" Padding="25 0 0 0" AcceptsTab="False" AcceptsReturn="False">
+                            <TextBox x:Name="RefSearchTextBox" Grid.Column="0" Grid.ColumnSpan="2" Padding="25 0 0 0" AcceptsTab="False" AcceptsReturn="False" TextChanged="OnSearchTextChanged">
                                 <TextBox.Style>
                                     <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                                         <Setter Property="Text" Value="{Binding RefTab.FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

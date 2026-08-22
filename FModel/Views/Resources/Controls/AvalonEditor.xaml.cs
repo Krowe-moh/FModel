@@ -228,7 +228,15 @@ public partial class AvalonEditor
 
     private void OnTabClose(object sender, EventArgs eventArgs)
     {
-        if (eventArgs is not TabControlViewModel.TabEventArgs e || e.TabToRemove.Document?.FileName is not { } fileName)
+        if (eventArgs is not TabControlViewModel.TabEventArgs e)
+            return;
+
+        if (ReferenceEquals(e.TabToRemove, DataContext))
+        {
+            ApplicationService.ApplicationView.CUE4Parse.TabControl.OnTabRemove -= OnTabClose;
+        }
+
+        if (e.TabToRemove.Document?.FileName is not { } fileName)
             return;
 
         if (_savedCarets.ContainsKey(fileName))

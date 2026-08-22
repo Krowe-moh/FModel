@@ -233,6 +233,8 @@ public class AudioPlayerViewModel : ViewModel, ISource, IDisposable
     {
         Application.Current.Dispatcher.Invoke(() =>
         {
+            _sourceTimer ??= new Timer(TimerTick, null, 0, 10);
+
             if (!ConvertIfNeeded())
                 return;
 
@@ -521,11 +523,10 @@ public class AudioPlayerViewModel : ViewModel, ISource, IDisposable
                 _waveSource = null;
             }
 
-            if (_soundOut != null)
-            {
-                _soundOut.Dispose();
-                _soundOut = null;
-            }
+            ClearSoundOut();
+
+            _sourceTimer?.Dispose();
+            _sourceTimer = null;
 
             if (Spectrum != null)
                 Spectrum = null;
@@ -568,6 +569,8 @@ public class AudioPlayerViewModel : ViewModel, ISource, IDisposable
     private void LoadSoundOut()
     {
         if (_waveSource == null) return;
+
+        ClearSoundOut();
         _soundOut = new WasapiOut(true, AudioClientShareMode.Shared, 100, ThreadPriority.Highest) { Device = SelectedAudioDevice };
         _soundOut.Initialize(_waveSource.ToSampleSource().ToWaveSource(16));
         _soundOut.Volume = UserSettings.Default.AudioPlayerVolume / 100;
@@ -575,6 +578,10 @@ public class AudioPlayerViewModel : ViewModel, ISource, IDisposable
 
     private void ClearSoundOut()
     {
+        if (_soundOut == null) return;
+
+        _soundOut.Stop();
+        _soundOut.Dispose();
         _soundOut = null;
     }
 
@@ -762,17 +769,33 @@ public class AudioPlayerViewModel : ViewModel, ISource, IDisposable
             UseShellExecute = false,
             CreateNoWindow = true
         });
-        process?.WaitForExit(5000);
-
-        File.Delete(tempfile);
-
-        var success = process?.ExitCode == 0 && File.Exists(tempWavFilePath);
-        if (success)
+        using (process)
         {
-            File.Move(tempWavFilePath, wavFilePath, true);
-        }
+            var exited = process != null && process.WaitForExit(5000);
+            if (!exited)
+            {
+                try
+                {
+                    process?.Kill();
+                    process?.WaitForExit(2000);
+                    Log.Warning("Audio process timed out and was killed");
+                }
+                catch
+                {
+                    // Ignore
+                }
+            }
 
-        return success;
+            File.Delete(tempfile);
+
+            var success = exited && process.ExitCode == 0 && File.Exists(tempWavFilePath);
+            if (success)
+            {
+                File.Move(tempWavFilePath, wavFilePath, true);
+            }
+
+            return success;
+        }
     }
 
     private static string TryGetVgmstreamPath()

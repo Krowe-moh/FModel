@@ -43,6 +43,23 @@ public class TabImage : ViewModel
         SetImage(img);
     }
 
+    private static readonly string[] KnownImageExtensions = [".png", ".jpg", ".jpeg", ".jpe", ".jfif", ".bmp", ".tif", ".tiff", ".webp", ".dds", ".hdr", ".exr"];
+
+    // prevents T_Slop.png.jpg
+    private void SetExportExtension(string extension)
+    {
+        var name = ExportName;
+        foreach (var ext in KnownImageExtensions)
+        {
+            if (name.EndsWith(ext, StringComparison.OrdinalIgnoreCase))
+            {
+                name = name[..^ext.Length];
+                break;
+            }
+        }
+        ExportName = $"{name}.{extension}";
+    }
+
     private BitmapImage _image;
     public BitmapImage Image
     {
@@ -82,7 +99,7 @@ public class TabImage : ViewModel
         }
 
         _bmp = bitmap;
-        ExportName += "." + (NoAlpha ? "jpg" : "png");
+        SetExportExtension(NoAlpha ? "jpg" : "png");
         using var data = _bmp.Encode(NoAlpha ? SKEncodedImageFormat.Jpeg : SKEncodedImageFormat.Png, 100);
         using var stream = new MemoryStream(ImageBuffer = data.ToArray(), false);
         var image = new BitmapImage();
@@ -109,12 +126,12 @@ public class TabImage : ViewModel
         if (PixelFormatUtils.IsHDR(bitmap.PixelFormat) || (UserSettings.Default.TextureExportFormat != ETextureFormat.Jpeg && UserSettings.Default.TextureExportFormat != ETextureFormat.Png))
         {
             ImageBuffer = bitmap.Encode(UserSettings.Default.TextureExportFormat, UserSettings.Default.SaveHdrTexturesAsHdr, out var ext);
-            ExportName += "." + ext;
+            SetExportExtension(ext);
         }
         else
         {
             ImageBuffer = imageData;
-            ExportName += "." + (NoAlpha || UserSettings.Default.TextureExportFormat == ETextureFormat.Jpeg ? "jpg" : "png");
+            SetExportExtension(NoAlpha || UserSettings.Default.TextureExportFormat == ETextureFormat.Jpeg ? "jpg" : "png");
         }
 
         using var stream = new MemoryStream(imageData);

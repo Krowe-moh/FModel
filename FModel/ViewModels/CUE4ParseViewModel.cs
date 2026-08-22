@@ -703,9 +703,8 @@ public class CUE4ParseViewModel : ViewModel
 
     public void ExportFolder(CancellationToken cancellationToken, TreeItem folder)
     {
-        Parallel.ForEach(folder.AssetsList.Assets, entry =>
+        Parallel.ForEach(folder.AssetsList.Assets, new ParallelOptions { CancellationToken = cancellationToken }, entry =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
             ExportData(entry.Asset);
         });
 

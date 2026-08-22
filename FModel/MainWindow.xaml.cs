@@ -140,7 +140,7 @@ public partial class MainWindow
 
     private void OnWindowKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.OriginalSource is TextBox || e.OriginalSource is TextArea && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        if (e.OriginalSource is TextBox || (e.OriginalSource is TextArea && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)))
             return;
 
         if (_threadWorkerView.CanBeCanceled && e.Key == Key.Escape)
