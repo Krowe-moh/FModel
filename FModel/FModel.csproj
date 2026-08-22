@@ -5,7 +5,6 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>FModel.ico</ApplicationIcon>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
     <Version>4.4.4.0</Version>
     <IsPackable>false</IsPackable>
     <IsPublishable>true</IsPublishable>
