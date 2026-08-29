@@ -11,6 +11,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using AdonisUI.Controls;
+using CUE4Parse_Conversion.Exporters;
+using CUE4Parse_Conversion.Sounds;
 using CUE4Parse;
 using CUE4Parse.Compression;
 using CUE4Parse.Encryption.Aes;
@@ -18,6 +20,7 @@ using CUE4Parse.FileProvider;
 using CUE4Parse.FileProvider.Objects;
 using CUE4Parse.FileProvider.Vfs;
 using CUE4Parse.GameTypes.Aion2.Objects;
+using CUE4Parse.GameTypes.AoC.Objects;
 using CUE4Parse.GameTypes.AshEchoes.FileProvider;
 using CUE4Parse.GameTypes.Borderlands3.Assets.Exports;
 using CUE4Parse.GameTypes.Borderlands4.Assets.Exports;
@@ -27,6 +30,7 @@ using CUE4Parse.GameTypes.HonorOfKings.FileProvider;
 using CUE4Parse.GameTypes.KRD.Assets.Exports;
 using CUE4Parse.GameTypes.LegoBatman.Assets;
 using CUE4Parse.GameTypes.LordOfMysteries.FileProvider;
+using CUE4Parse.GameTypes.RL.Encryption.Aes;
 using CUE4Parse.GameTypes.RocoKingdomWorld.Assets.Objects;
 using CUE4Parse.GameTypes.SMG.UE4.Assets.Exports.Wwise;
 using CUE4Parse.GameTypes.SquareEnix.UE4.Assets.Exports;
@@ -43,6 +47,7 @@ using CUE4Parse.UE4.Assets.Exports.Fmod;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Sound;
+using CUE4Parse.UE4.Assets.Exports.Sound.Node;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Assets.Exports.Verse;
@@ -66,12 +71,6 @@ using CUE4Parse.UE4.Shaders;
 using CUE4Parse.UE4.Versions;
 using CUE4Parse.UE4.Wwise;
 using CUE4Parse.Utils;
-using CUE4Parse_Conversion.Exporters;
-using CUE4Parse_Conversion.Sounds;
-using CUE4Parse.GameTypes.AoC.Objects;
-using CUE4Parse.MappingsProvider.Jmap;
-using CUE4Parse.MappingsProvider.Usmap;
-using CUE4Parse.GameTypes.RL.Encryption.Aes;
 using EpicManifestParser;
 using EpicManifestParser.UE;
 using FModel.Creator;
@@ -84,6 +83,7 @@ using FModel.Views.Resources.Controls;
 using FModel.Views.Snooper;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using Serilog;
@@ -93,12 +93,6 @@ using UE4Config.Parsing;
 using static CUE4Parse.UE4.Versions.EGame;
 using Application = System.Windows.Application;
 using FGuid = CUE4Parse.UE4.Objects.Core.Misc.FGuid;
-using CUE4Parse.UE4.Objects.UObject.Editor;
-using CUE4Parse.UE4.Assets.Exports.Fmod;
-using CUE4Parse.UE4.Assets.Exports.Sound.Node;
-using CUE4Parse.UE4.Exceptions;
-using CUE4Parse.UE4.FMod;
-using CUE4Parse.UE4.IO.Objects;
 
 
 namespace FModel.ViewModels;
@@ -146,7 +140,7 @@ public class CUE4ParseViewModel : ViewModel
                     new GameWindowSettings { UpdateFrequency = htz },
                     new NativeWindowSettings
                     {
-                        ClientSize = new OpenTK.Mathematics.Vector2i(
+                        ClientSize = new Vector2i(
                             Convert.ToInt32(SystemParameters.MaximizedPrimaryScreenWidth * .75 * scale),
                             Convert.ToInt32(SystemParameters.MaximizedPrimaryScreenHeight * .85 * scale)),
                         NumberOfSamples = Constants.SAMPLES_COUNT,
@@ -1662,7 +1656,6 @@ public class CUE4ParseViewModel : ViewModel
             // }:
             case UPaperSprite when isNone && UserSettings.Default.PreviewMaterials:
             case UStaticMesh when isNone && UserSettings.Default.PreviewStaticMeshes:
-            case UGeometryCollection when isNone && UserSettings.Default.PreviewStaticMeshes:
             case USkeletalMesh when isNone && UserSettings.Default.PreviewSkeletalMeshes:
             case USkeleton when isNone && UserSettings.Default.SaveSkeletonAsMesh:
             case UMaterialInstance when isNone && UserSettings.Default.PreviewMaterials && !ModelIsOverwritingMaterial &&
@@ -1681,15 +1674,14 @@ public class CUE4ParseViewModel : ViewModel
                 SnooperViewer.Run();
                 return true;
             }
-            case UAnimSequenceBase when isNone && UserSettings.Default.PreviewAnimations || ModelIsWaitingAnimation:
+            case UAnimSequenceBase when isNone && ModelIsWaitingAnimation:
             {
                 // animate all animations using their specified skeleton or when we explicitly asked for a loaded model to be animated (ignoring whether we wanted to preview animations)
                 SnooperViewer.Renderer.Animate(pointer.Object.Value);
                 SnooperViewer.Run();
-                return true;
+                return false;
             }
             case UStaticMesh when HasFlag(bulk, EBulkType.Meshes):
-            case UGeometryCollection when HasFlag(bulk, EBulkType.Meshes):
             case USkeletalMesh when HasFlag(bulk, EBulkType.Meshes):
             case USkeleton when UserSettings.Default.SaveSkeletonAsMesh && HasFlag(bulk, EBulkType.Meshes):
             // case UMaterialInterface when HasFlag(bulk, EBulkType.Materials):

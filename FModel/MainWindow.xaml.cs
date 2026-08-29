@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using CUE4Parse.Compression;
 using FModel.Extensions;
 using FModel.Services;
 using FModel.Settings;
