@@ -431,6 +431,62 @@ public sealed class UserSettings : ViewModel
         set => SetProperty(ref _nextAudio, value);
     }
 
+    private Hotkey _exportData = new(Key.None);
+    public Hotkey ExportData
+    {
+        get => _exportData;
+        set => SetProperty(ref _exportData, value);
+    }
+
+    private Hotkey _exportProperties = new(Key.None);
+    public Hotkey ExportProperties
+    {
+        get => _exportProperties;
+        set => SetProperty(ref _exportProperties, value);
+    }
+
+    private Hotkey _exportTextures = new(Key.None);
+    public Hotkey ExportTextures
+    {
+        get => _exportTextures;
+        set => SetProperty(ref _exportTextures, value);
+    }
+
+    private Hotkey _exportModels = new(Key.None);
+    public Hotkey ExportModels
+    {
+        get => _exportModels;
+        set => SetProperty(ref _exportModels, value);
+    }
+
+    private Hotkey _exportWorlds = new(Key.None);
+    public Hotkey ExportWorlds
+    {
+        get => _exportWorlds;
+        set => SetProperty(ref _exportWorlds, value);
+    }
+
+    private Hotkey _exportAnimations = new(Key.None);
+    public Hotkey ExportAnimations
+    {
+        get => _exportAnimations;
+        set => SetProperty(ref _exportAnimations, value);
+    }
+
+    private Hotkey _exportAudio = new(Key.None);
+    public Hotkey ExportAudio
+    {
+        get => _exportAudio;
+        set => SetProperty(ref _exportAudio, value);
+    }
+
+    private Hotkey _exportCode = new(Key.None);
+    public Hotkey ExportCode
+    {
+        get => _exportCode;
+        set => SetProperty(ref _exportCode, value);
+    }
+
     private EMeshFormat _meshExportFormat = EMeshFormat.UEFormat;
     public EMeshFormat MeshExportFormat
     {

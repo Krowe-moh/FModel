@@ -517,8 +517,16 @@ public class TabControlViewModel : ViewModel
     }
 
     public event EventHandler OnTabRemove;
-    public void GoLeftTab() => SelectedTab = _tabItems.Previous(SelectedTab);
-    public void GoRightTab() => SelectedTab = _tabItems.Next(SelectedTab);
+    public void GoLeftTab()
+    {
+        if (_tabItems.Count > 0)
+            SelectedTab = _tabItems.Previous(SelectedTab);
+    }
+    public void GoRightTab()
+    {
+        if (_tabItems.Count > 0)
+            SelectedTab = _tabItems.Next(SelectedTab);
+    }
 
     public void RemoveOtherTabs(TabItem tab)
     {

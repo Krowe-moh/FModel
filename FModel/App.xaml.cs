@@ -129,11 +129,11 @@ public partial class App
             .WriteTo.Logger(lc => lc
                 .Filter.ByExcluding(IsConversionLibrary)
                 .WriteTo.Console(outputTemplate: template1, theme: AnsiConsoleTheme.Literate)
-                .WriteTo.File(outputTemplate: template1, path: filePath))
+                .WriteTo.File(outputTemplate: template1, path: filePath, shared: true))
             .WriteTo.Logger(lc => lc
                 .Filter.ByIncludingOnly(IsConversionLibrary)
                 .WriteTo.Console(outputTemplate: template2, theme: AnsiConsoleTheme.Literate)
-                .WriteTo.File(outputTemplate: template2, path: filePath))
+                .WriteTo.File(outputTemplate: template2, path: filePath, shared: true))
             .MinimumLevel.Override("CUE4Parse_Conversion", LogEventLevel.Verbose).WriteTo.Sink(ImGuiSink.Instance)
             .CreateLogger();
 

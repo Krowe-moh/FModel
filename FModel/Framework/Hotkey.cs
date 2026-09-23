@@ -27,11 +27,13 @@ public class Hotkey : ViewModel
 
     public bool IsTriggered(Key e)
     {
-        return e == Key && Keyboard.Modifiers.HasFlag(Modifiers);
+        return Key != Key.None && e == Key && Keyboard.Modifiers.HasFlag(Modifiers);
     }
 
     public override string ToString()
     {
+        if (Key == Key.None) return string.Empty;
+
         var str = new StringBuilder();
 
         if (Modifiers.HasFlag(ModifierKeys.Control))

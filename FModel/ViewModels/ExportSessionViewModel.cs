@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +17,7 @@ using FModel.Extensions;
 using FModel.Framework;
 using FModel.Settings;
 using FModel.Views;
+using FModel.Views.Resources.Controls;
 using FModel.Views.Snooper;
 using Serilog.Events;
 
@@ -175,9 +178,9 @@ public class ExportSessionViewModel : ViewModel
         });
     }
 
-    public async Task ExportAsync()
+    public async Task<IReadOnlyList<ExportResult>> ExportAsync()
     {
-        if (IsRunning || Session.TotalQueued == 0) return;
+        if (IsRunning || Session.TotalQueued == 0) return null;
 
         IsRunning = true;
         IsFinished = false;
@@ -218,9 +221,10 @@ public class ExportSessionViewModel : ViewModel
             });
         });
 
+        IReadOnlyList<ExportResult> results = null;
         try
         {
-            await Session.RunAsync(exportDirectory, exportOptions, progress, _cts.Token).ConfigureAwait(false);
+            results = await Session.RunAsync(exportDirectory, exportOptions, progress, _cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -237,14 +241,86 @@ public class ExportSessionViewModel : ViewModel
                 UpdateElapsedAndEta();
             });
         }
+        return results;
     }
 
     public async Task ExportAutomaticallyAsync()
     {
-        if (UserSettings.Default.ExportImmediately)
+        if (!UserSettings.Default.ExportImmediately) return;
+
+        var results = await ExportAsync();
+        if (results is { Count: > 0 }) LogSummary(results);
+    }
+
+    private static void LogSummary(IReadOnlyList<ExportResult> results)
+    {
+        if (results.Count == 1)
         {
-            await ExportAsync();
+            var result = results[0];
+            switch (result.Success)
+            {
+                case true when result.DiskFilePaths is { Count: > 0 } files:
+                    FLogger.Append(ELog.Information, () =>
+                    {
+                        FLogger.Text("Successfully exported ", Constants.WHITE);
+                        FLogger.Link(Path.GetFileName(files[0]), files[0], true);
+                    });
+                    break;
+                case false when result.Error is { } exception:
+                    FLogger.Append(exception);
+                    break;
+            }
+            return;
         }
+
+        var failed = 0;
+        var groups = new Dictionary<string, (int Count, string[] Source, string[] Directory)>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var result in results)
+        {
+            if (!result.Success)
+            {
+                failed++;
+                continue;
+            }
+
+            if (result.DiskFilePaths == null) continue;
+
+            foreach (var file in result.DiskFilePaths)
+            {
+                var extension = Path.GetExtension(file).TrimStart('.');
+                var source = SplitDirectory(result.ObjectPath);
+                var directory = SplitDirectory(file);
+                groups[extension] = groups.TryGetValue(extension, out var group)
+                    ? (group.Count + 1, CommonPrefix(group.Source, source), CommonPrefix(group.Directory, directory))
+                    : (1, source, directory);
+            }
+        }
+
+        foreach (var (extension, group) in groups)
+        {
+            var source = string.Join('/', group.Source);
+            var directory = string.Join(Path.DirectorySeparatorChar, group.Directory);
+            FLogger.Append(ELog.Information, () =>
+            {
+                FLogger.Text($"Successfully exported {group.Count} {extension} from ", Constants.WHITE);
+                if (directory.Length > 0) FLogger.Link(source, directory, true);
+                else FLogger.Text(source, Constants.WHITE, true);
+            });
+        }
+
+        if (failed > 0)
+        {
+            FLogger.Append(ELog.Error, () => FLogger.Text($"Failed to export {failed} asset{(failed == 1 ? "" : "s")}, open the Export Session window for more details.", Constants.WHITE, true));
+        }
+    }
+
+    private static string[] SplitDirectory(string path) => Path.GetDirectoryName(path)?.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) ?? [];
+    private static string[] CommonPrefix(string[] a, string[] b)
+    {
+        var i = 0;
+        while (i < a.Length && i < b.Length && string.Equals(a[i], b[i], StringComparison.OrdinalIgnoreCase)) i++;
+        return i == a.Length ? a : a[..i];
     }
 
     public void CancelExport()
@@ -384,6 +460,7 @@ public class ClassGroupViewModel(string name) : ViewModel
 public class ObjectGroupViewModel(string path) : ViewModel
 {
     public string Path { get; } = path;
+    public string Directory { get; } = path.SubstringBeforeLast('/');
     public string Name { get; } = path.SubstringAfterLast('.');
     public ObservableCollection<LogEntryViewModel> Entries { get; } = [];
 
@@ -426,4 +503,29 @@ public class LogEntryViewModel(LogEvent log)
         _ => log.Exception?.Message ?? log.RenderMessage()
     };
     public Exception? Exception { get; } = log.Exception;
+    public IReadOnlyList<ExceptionDetailsViewModel> ExceptionDetails { get; } =
+        log.Exception is { } exception ? [new ExceptionDetailsViewModel(exception)] : [];
+}
+
+public class ExceptionDetailsViewModel
+{
+    public string Header { get; }
+    public string Details { get; }
+
+    public ExceptionDetailsViewModel(Exception exception)
+    {
+        var text = exception.ToString().ReplaceLineEndings("\n");
+        var newline = text.IndexOf('\n');
+
+        if (newline < 0)
+        {
+            Header = text;
+            Details = string.Empty;
+        }
+        else
+        {
+            Header = text[..newline];
+            Details = text[(newline + 1)..];
+        }
+    }
 }
