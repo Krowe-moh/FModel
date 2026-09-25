@@ -10,6 +10,7 @@ using CUE4Parse.FileProvider.Objects;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.Utils;
 using CUE4Parse_Conversion.Textures;
+using CUE4Parse.UE4.Objects.UObject;
 using FModel.Extensions;
 using FModel.Framework;
 using FModel.Services;
@@ -300,9 +301,26 @@ public class TabItem : ViewModel
         else
         {
             img[0] = texture.Decode(UserSettings.Default.CurrentDir.TexturePlatform);
-            if (texture is UTextureCube)
+            if (texture is UTextureCube cube)
             {
-                img[0] = img[0].ToPanorama();
+                CTexture LoadFace(FPackageIndex face) =>
+                    face?.Load() is UTexture tex ? tex.Decode(UserSettings.Default.CurrentDir.TexturePlatform) : null;
+
+                var faces = new[]
+                {
+                    LoadFace(cube.FacePosX),
+                    LoadFace(cube.FaceNegX),
+                    LoadFace(cube.FacePosY),
+                    LoadFace(cube.FaceNegY),
+                    LoadFace(cube.FacePosZ),
+                    LoadFace(cube.FaceNegZ)
+                };
+
+                img[0] = faces.All(f => f != null)
+                    ? CubemapConverter.ToPanoramaFromFaces(faces[0], faces[1], faces[2], faces[3], faces[4], faces[5])
+                    : img[0] != null
+                        ? img[0].ToPanorama()
+                        : null;
             }
         }
 
