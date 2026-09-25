@@ -1,7 +1,9 @@
+using FModel.Settings;
 using FModel.ViewModels;
 using FModel.Views.Resources.Controls;
 using Ookii.Dialogs.Wpf;
 using Serilog;
+using System;
 using System.Windows;
 using MessageBox = AdonisUI.Controls.MessageBox;
 using MessageBoxButtons = AdonisUI.Controls.MessageBoxButtons;
@@ -53,11 +55,21 @@ public partial class DirectorySelector
     private void OnAddDirectory(object sender, RoutedEventArgs e)
     {
         if (DataContext is not GameSelectorViewModel gameLauncherViewModel ||
-            string.IsNullOrEmpty(HelloMyNameIsGame.Text) ||
-            string.IsNullOrEmpty(HelloGameMyNameIsDirectory.Text))
+            string.IsNullOrWhiteSpace(HelloGameMyNameIsDirectory.Text))
             return;
 
-        gameLauncherViewModel.AddUndetectedDir(HelloMyNameIsGame.Text, HelloGameMyNameIsDirectory.Text);
+        var gameDirectory = HelloGameMyNameIsDirectory.Text.Trim();
+        var gameName = HelloMyNameIsGame.Text.Trim();
+
+        if (gameName.Length == 0)
+        {
+            gameLauncherViewModel.AddUndetectedDir(gameDirectory);
+        }
+        else
+        {
+            gameLauncherViewModel.AddUndetectedDir(gameName, gameDirectory);
+        }
+
         HelloMyNameIsGame.Clear();
         HelloGameMyNameIsDirectory.Clear();
     }
@@ -68,6 +80,40 @@ public partial class DirectorySelector
             return;
 
         gameLauncherViewModel.DeleteSelectedGame();
+    }
+
+    private void OnChangeItemDirectory(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not GameSelectorViewModel gameLauncherViewModel ||
+            sender is not FrameworkElement {DataContext: DirectorySettings directory})
+            return;
+
+        var folderBrowser = new VistaFolderBrowserDialog {ShowNewFolderButton = false};
+        if (folderBrowser.ShowDialog() == true)
+        {
+            gameLauncherViewModel.ChangeDirectory(directory, folderBrowser.SelectedPath);
+        }
+    }
+
+    private void OnDeleteItemDirectory(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not GameSelectorViewModel gameLauncherViewModel ||
+            sender is not FrameworkElement {DataContext: DirectorySettings directory})
+            return;
+
+        gameLauncherViewModel.DeleteDirectory(directory);
+    }
+
+    private void OnDetectedGamesDropDownOpened(object sender, EventArgs e)
+    {
+        if (DataContext is GameSelectorViewModel gameSelectorViewModel)
+            gameSelectorViewModel.RefreshDirectories();
+    }
+
+    private void OnToggleMissingDirectories(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is GameSelectorViewModel gameSelectorViewModel)
+            gameSelectorViewModel.IsMissingDirectoriesVisible = !gameSelectorViewModel.IsMissingDirectoriesVisible;
     }
 
     private void OnClearDirectories(object sender, RoutedEventArgs e)

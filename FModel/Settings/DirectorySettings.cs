@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Versions;
 using FModel.Framework;
@@ -41,8 +42,19 @@ public class DirectorySettings : ViewModel, ICloneable
     public string GameDirectory
     {
         get => _gameDirectory;
-        set => SetProperty(ref _gameDirectory, value);
+        set
+        {
+            if (SetProperty(ref _gameDirectory, value))
+                RaisePropertyChanged(nameof(IsDirectoryMissing));
+        }
     }
+
+    public bool IsDirectoryMissing => !IsDirectoryAvailable(GameDirectory);
+
+    public static bool IsDirectoryAvailable(string gameDirectory)
+        => gameDirectory is Constants._FN_LIVE_TRIGGER or Constants._VAL_LIVE_TRIGGER || Directory.Exists(gameDirectory);
+
+    public void RefreshDirectoryAvailability() => RaisePropertyChanged(nameof(IsDirectoryMissing));
 
     private bool _isManual;
     public bool IsManual

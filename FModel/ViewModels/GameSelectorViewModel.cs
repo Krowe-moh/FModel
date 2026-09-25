@@ -4,6 +4,8 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -42,8 +44,24 @@ public class GameSelectorViewModel : ViewModel
         set => SetProperty(ref _selectedDirectory, value);
     }
 
+    private int _missingDirectoryCount;
+    public int MissingDirectoryCount
+    {
+        get => _missingDirectoryCount;
+        private set => SetProperty(ref _missingDirectoryCount, value);
+    }
+
+    private bool _isMissingDirectoriesVisible;
+    public bool IsMissingDirectoriesVisible
+    {
+        get => _isMissingDirectoriesVisible;
+        set => SetProperty(ref _isMissingDirectoriesVisible, value);
+    }
+
     private readonly ObservableCollection<DirectorySettings> _detectedDirectories;
+    private readonly ObservableCollection<DirectorySettings> _missingDirectories = [];
     public ReadOnlyObservableCollection<DirectorySettings> DetectedDirectories { get; }
+    public ReadOnlyObservableCollection<DirectorySettings> MissingDirectories { get; }
     public ReadOnlyObservableCollection<EGame> UeGames { get; }
 
     public GameSelectorViewModel(string gameDirectory)
@@ -55,6 +73,8 @@ public class GameSelectorViewModel : ViewModel
         }
 
         DetectedDirectories = new ReadOnlyObservableCollection<DirectorySettings>(_detectedDirectories);
+        MissingDirectories = new ReadOnlyObservableCollection<DirectorySettings>(_missingDirectories);
+        WatchDirectories();
 
         if (DetectedDirectories.FirstOrDefault(x => x.GameDirectory == gameDirectory) is { } detectedGame)
             SelectedDirectory = detectedGame;
@@ -66,7 +86,49 @@ public class GameSelectorViewModel : ViewModel
         UeGames = new ReadOnlyObservableCollection<EGame>(new ObservableCollection<EGame>(EnumerateUeGames()));
     }
 
-    public void AddUndetectedDir(string gameDirectory) => AddUndetectedDir(gameDirectory.SubstringAfterLast('\\'), gameDirectory);
+    private void WatchDirectories()
+    {
+        foreach (var directory in _detectedDirectories)
+            directory.PropertyChanged += OnDirectoryPropertyChanged;
+        _detectedDirectories.CollectionChanged += (_, args) =>
+        {
+            if (args.NewItems is not null)
+                foreach (DirectorySettings directory in args.NewItems)
+                    directory.PropertyChanged += OnDirectoryPropertyChanged;
+            RefreshMissingDirectories();
+        };
+        RefreshMissingDirectories();
+    }
+
+    public void RefreshDirectories()
+    {
+        foreach (var directory in _detectedDirectories)
+            directory.RefreshDirectoryAvailability();
+        RefreshMissingDirectories();
+    }
+
+    private void RefreshMissingDirectories()
+    {
+        var missingDirectories = _detectedDirectories.Where(x => x.IsDirectoryMissing).ToArray();
+        if (missingDirectories.SequenceEqual(_missingDirectories))
+            return;
+
+        _missingDirectories.Clear();
+        foreach (var directory in missingDirectories)
+            _missingDirectories.Add(directory);
+
+        MissingDirectoryCount = _missingDirectories.Count;
+        if (MissingDirectoryCount == 0)
+            IsMissingDirectoriesVisible = false;
+    }
+
+    private void OnDirectoryPropertyChanged(object sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(DirectorySettings.IsDirectoryMissing))
+            RefreshMissingDirectories();
+    }
+
+    public void AddUndetectedDir(string gameDirectory) => AddUndetectedDir(Helper.GetGameName(gameDirectory), gameDirectory);
     public void AddUndetectedDir(string gameName, string gameDirectory)
     {
         if (TryDetectUeVersion(gameDirectory, out var ueVersion, out var newGameDirectory))
@@ -182,11 +244,37 @@ public class GameSelectorViewModel : ViewModel
         }
     }
 
-    public void DeleteSelectedGame()
+    public void DeleteSelectedGame() => DeleteDirectory(SelectedDirectory);
+
+    public void DeleteDirectory(DirectorySettings directory)
     {
-        UserSettings.Default.PerDirectory.Remove(SelectedDirectory.GameDirectory); // should not be a problem
-        _detectedDirectories.Remove(SelectedDirectory);
-        SelectedDirectory = DetectedDirectories.Last();
+        if (directory is null || !_detectedDirectories.Remove(directory))
+            return;
+
+        UserSettings.Default.PerDirectory.Remove(directory.GameDirectory); // should not be a problem
+        if (ReferenceEquals(SelectedDirectory, directory))
+            SelectedDirectory = DetectedDirectories.LastOrDefault();
+    }
+
+    public void ChangeDirectory(DirectorySettings directory, string gameDirectory)
+    {
+        if (directory is null || string.IsNullOrWhiteSpace(gameDirectory))
+            return;
+
+        var previousDirectory = directory.GameDirectory;
+        if (string.Equals(previousDirectory, gameDirectory, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var perDirectory = UserSettings.Default.PerDirectory;
+        if (perDirectory.ContainsKey(previousDirectory) || directory.IsManual)
+        {
+            perDirectory.Remove(previousDirectory);
+            perDirectory[gameDirectory] = directory;
+        }
+
+        directory.GameDirectory = gameDirectory;
+        if (TryDetectUeVersion(gameDirectory, out var ueVersion, out _))
+            directory.UeVersion = ueVersion;
     }
 
     public int ClearMissingDirectories()
@@ -219,8 +307,7 @@ public class GameSelectorViewModel : ViewModel
         return removedDirectories.Count;
     }
 
-    public static bool IsGameDirectoryAvailable(string gameDirectory)
-        => gameDirectory is Constants._FN_LIVE_TRIGGER or Constants._VAL_LIVE_TRIGGER || Directory.Exists(gameDirectory);
+    public static bool IsGameDirectoryAvailable(string gameDirectory) => DirectorySettings.IsDirectoryAvailable(gameDirectory);
 
     private IEnumerable<EGame> EnumerateUeGames()
         => Enum.GetValues<EGame>()
