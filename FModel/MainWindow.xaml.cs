@@ -120,9 +120,7 @@ public partial class MainWindow
             _applicationView.CUE4Parse.VerifyConsoleVariables(),
             _applicationView.CUE4Parse.VerifyOnDemandArchives(),
             _applicationView.CUE4Parse.InitMappings(),
-            ApplicationViewModel.InitDetex(),
             ApplicationViewModel.InitVgmStream(),
-            ApplicationViewModel.InitImGuiSettings(newOrUpdated),
             Task.Run(() =>
             {
                 if (UserSettings.Default.DiscordRpc == EDiscordRpc.Always)
@@ -165,7 +163,7 @@ public partial class MainWindow
             _applicationView.CUE4Parse.TabControl.SelectedTab.GoNextImage();
         else if (_applicationView.Status.IsReady && _applicationView.IsAssetsExplorerVisible && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
         {
-            CategoriesSelector.SelectedIndex = e.SystemKey switch
+            var categoryIndex = e.SystemKey switch
             {
                 Key.D0 or Key.NumPad0 => 0,
                 Key.D1 or Key.NumPad1 => 1,
@@ -177,11 +175,18 @@ public partial class MainWindow
                 Key.D7 or Key.NumPad7 => 7,
                 Key.D8 or Key.NumPad8 => 8,
                 Key.D9 or Key.NumPad9 => 9,
-                _ => CategoriesSelector.SelectedIndex
+                _ => -1
             };
+
+            if (categoryIndex < 0)
+                return;
+
+            CategoriesSelector.SelectedIndex = categoryIndex;
         }
         else if (_applicationView.Status.IsReady && UserSettings.Default.ExportData.IsTriggered(e.Key))
             OnExportHotkey("Save_Data");
+        else if (_applicationView.Status.IsReady && UserSettings.Default.ExportEmbeddedFiles.IsTriggered(e.Key))
+            OnExportHotkey("Save_EmbeddedFiles");
         else if (_applicationView.Status.IsReady && UserSettings.Default.ExportProperties.IsTriggered(e.Key))
             OnExportHotkey("Save_Properties");
         else if (_applicationView.Status.IsReady && UserSettings.Default.ExportTextures.IsTriggered(e.Key))
@@ -210,6 +215,10 @@ public partial class MainWindow
             _applicationView.SelectedLeftTabIndex--;
         else if (UserSettings.Default.DirRightTab.IsTriggered(e.Key) && _applicationView.SelectedLeftTabIndex < LeftTabControl.Items.Count - 1)
             _applicationView.SelectedLeftTabIndex++;
+        else
+            return;
+
+        e.Handled = true;
     }
 
     private void OnSearchViewClick(object sender, RoutedEventArgs e)

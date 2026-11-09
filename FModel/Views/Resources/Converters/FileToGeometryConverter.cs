@@ -28,7 +28,7 @@ public class FileToGeometryConverter : IMultiValueConverter
             EAssetCategory.UserDefinedStruct => ("BlueprintIcon", "UserDefinedStructBrush"),
             EAssetCategory.CookedMetaData => ("BlueprintIcon", "CookedMetaDataBrush"),
 
-            EAssetCategory.Texture => ("TextureIconAlt", "TextureBrush"),
+            EAssetCategory.Texture or EAssetCategory.AnimatedTexture => ("TextureIconAlt", "TextureBrush"),
 
             EAssetCategory.StaticMesh => ("StaticMeshIconAlt", "NeutralBrush"),
             EAssetCategory.SkeletalMesh => ("SkeletalMeshIconAlt", "NeutralBrush"),
@@ -36,6 +36,7 @@ public class FileToGeometryConverter : IMultiValueConverter
             EAssetCategory.CustomizableObject => ("StaticMeshIconAlt", "CustomizableObjectBrush"),
             EAssetCategory.NaniteDisplacedMesh => ("StaticMeshIconAlt", "NaniteDisplacedMeshBrush"),
             EAssetCategory.GeometryCollection => ("GeometryCollectionIcon", "NeutralBrush"),
+            EAssetCategory.GroomAsset => ("GroomAssetIcon", "GroomAssetBrush"),
 
             EAssetCategory.Material => ("MaterialIcon", "MaterialBrush"),
             EAssetCategory.MaterialEditorData => ("MaterialIcon", "MaterialEditorBrush"),
@@ -90,10 +91,13 @@ public class FileToGeometryConverter : IMultiValueConverter
                 "sql" => ("SQLIcon", "SQLBrush"),
                 "py" => ("PythonIcon", "PythonBrush"),
                 "cs" => ("CSharpIcon", "CSharpBrush"),
+                "swf" => ("FlashIcon", "FlashBrush"),
                 _ => ("DataTableIcon", "NeutralBrush")
             },
 
             EAssetCategory.ByteCode => ("CodeIcon", "CodeBrush"),
+
+            EAssetCategory.Flash => ("FlashIcon", "FlashBrush"),
 
             // Game specific below
             EAssetCategory.Borderlands => ("BorderlandsIcon", "BorderlandsBrush"),
@@ -102,6 +106,8 @@ public class FileToGeometryConverter : IMultiValueConverter
             EAssetCategory.DeltaForce => ("DeltaForceIcon", "DeltaForceBrush"),
             EAssetCategory.LegoBatman or EAssetCategory.GothamKnights => ("BatmanIcon", "BatmanBrush"),
             EAssetCategory.ArcSys => ("ArcSysIcon", "ArcSysBrush"),
+            EAssetCategory.Nascar => ("NascarIcon", "NascarBrush"),
+            EAssetCategory.DeadByDaylight => ("DbdIcon", "DbdBrush"),
 
             _ => ("AssetIcon", "NeutralBrush")
         };
@@ -116,6 +122,10 @@ public class FileToGeometryConverter : IMultiValueConverter
 
             (EAssetFamily.FMod, EAssetCategory.Data) => ("FModIcon", "FModBrush"),
             (EAssetFamily.FMod, _) => ("FModIcon", brush),
+
+            (EAssetFamily.Houdini, _) => ("HoudiniIcon", "HoudiniBrush"),
+
+            (EAssetFamily.Paper2D, not EAssetCategory.DeadByDaylight) => ("Paper2DIcon", brush),
 
             _ => (geometry, brush),
         };

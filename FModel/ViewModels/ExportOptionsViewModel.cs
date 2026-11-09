@@ -90,6 +90,12 @@ public class ExportOptionsViewModel : ViewModel
 
     public bool ShowNaniteWarning => SelectedNaniteMeshFormat != ENaniteMeshFormat.NoNanite;
 
+    public bool IncludeDisabledMeshSections
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
     public IEnumerable<EMeshQuality> MeshQualities { get; } = Enum.GetValues<EMeshQuality>();
     public EMeshQuality SelectedMeshQuality
     {
@@ -136,8 +142,25 @@ public class ExportOptionsViewModel : ViewModel
     public ETextureFormat SelectedTextureFormat
     {
         get;
+        set
+        {
+            if (!SetProperty(ref field, value)) return;
+            RaisePropertyChanged(nameof(ShowTextureQuality));
+            RaisePropertyChanged(nameof(ShowPngCompression));
+            RaisePropertyChanged(nameof(ShowTgaCompression));
+        }
+    }
+
+    public IEnumerable<EAnimatedTextureFormat> AnimatedTextureFormats { get; } = Enum.GetValues<EAnimatedTextureFormat>();
+    public EAnimatedTextureFormat SelectedAnimatedTextureFormat
+    {
+        get;
         set => SetProperty(ref field, value);
     }
+
+    public bool ShowTextureQuality => SelectedTextureFormat is ETextureFormat.Jpeg or ETextureFormat.Webp;
+    public bool ShowPngCompression => SelectedTextureFormat is ETextureFormat.Png;
+    public bool ShowTgaCompression => SelectedTextureFormat is ETextureFormat.Tga;
 
     private ETextureFormat? _preUsdTextureFormat;
     public bool TextureFormatsEnabled => SelectedMeshFormat != EMeshFormat.USD;
@@ -149,6 +172,18 @@ public class ExportOptionsViewModel : ViewModel
     }
 
     public int TextureQuality
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
+    public int PngCompressionLevel
+    {
+        get;
+        set => SetProperty(ref field, Math.Clamp(value, 0, 9));
+    }
+
+    public bool TgaRleCompression
     {
         get;
         set => SetProperty(ref field, value);
@@ -177,6 +212,7 @@ public class ExportOptionsViewModel : ViewModel
         OutputDirectory = UserSettings.Default.ModelDirectory;
         SelectedMeshFormat = UserSettings.Default.MeshExportFormat;
         SelectedNaniteMeshFormat = UserSettings.Default.NaniteMeshExportFormat;
+        IncludeDisabledMeshSections = UserSettings.Default.IncludeDisabledMeshSections;
         SelectedMeshQuality = UserSettings.Default.MeshQuality;
         SelectedSocketFormat = UserSettings.Default.SocketExportFormat;
         SelectedCompressionFormat = UserSettings.Default.CompressionFormat;
@@ -184,9 +220,17 @@ public class ExportOptionsViewModel : ViewModel
         ExportMaterials = UserSettings.Default.SaveEmbeddedMaterials;
         SelectedTexturePlatform = UserSettings.Default.CurrentDir.TexturePlatform;
         SelectedTextureFormat = UserSettings.Default.TextureExportFormat;
+        SelectedAnimatedTextureFormat = UserSettings.Default.AnimatedTextureExportFormat;
+        if (SelectedMeshFormat is EMeshFormat.USD)
+        {
+            _preUsdTextureFormat = SelectedTextureFormat;
+            SelectedTextureFormat = ETextureFormat.Png;
+        }
         ExportHdrTexturesAsHdr = UserSettings.Default.SaveHdrTexturesAsHdr;
         ExportMorphTargets = UserSettings.Default.SaveMorphTargets;
         TextureQuality = UserSettings.Default.TextureQuality;
+        PngCompressionLevel = UserSettings.Default.PngCompressionLevel;
+        TgaRleCompression = UserSettings.Default.TgaRleCompression;
         ExportAllTextureMips = UserSettings.Default.ExportAllTextureMips;
         ExportImmediately = UserSettings.Default.ExportImmediately;
 
@@ -199,6 +243,7 @@ public class ExportOptionsViewModel : ViewModel
         UserSettings.Default.ModelDirectory = OutputDirectory;
         UserSettings.Default.MeshExportFormat = SelectedMeshFormat;
         UserSettings.Default.NaniteMeshExportFormat = SelectedNaniteMeshFormat;
+        UserSettings.Default.IncludeDisabledMeshSections = IncludeDisabledMeshSections;
         UserSettings.Default.MeshQuality = SelectedMeshQuality;
         UserSettings.Default.SocketExportFormat = SelectedSocketFormat;
         UserSettings.Default.CompressionFormat = SelectedCompressionFormat;
@@ -206,12 +251,17 @@ public class ExportOptionsViewModel : ViewModel
         UserSettings.Default.SaveEmbeddedMaterials = ExportMaterials;
         UserSettings.Default.CurrentDir.TexturePlatform = SelectedTexturePlatform;
         UserSettings.Default.TextureExportFormat = SelectedTextureFormat;
+        UserSettings.Default.AnimatedTextureExportFormat = SelectedAnimatedTextureFormat;
         UserSettings.Default.SaveHdrTexturesAsHdr = ExportHdrTexturesAsHdr;
         UserSettings.Default.SaveMorphTargets = ExportMorphTargets;
         UserSettings.Default.TextureQuality = TextureQuality;
+        UserSettings.Default.PngCompressionLevel = PngCompressionLevel;
+        UserSettings.Default.TgaRleCompression = TgaRleCompression;
         UserSettings.Default.ExportAllTextureMips = ExportAllTextureMips;
         UserSettings.Default.ExportImmediately = ExportImmediately;
         UserSettings.Save();
+
+        SnooperViewModel.Instance.Dispose();
 
         OverrideOptions = false;
         FeedbackMessage = "Saved as default";
@@ -230,6 +280,10 @@ public class ExportOptionsViewModel : ViewModel
         ExportMaterials,
         ExportMorphTargets,
         SelectedSocketFormat,
-        SelectedCompressionFormat
+        SelectedCompressionFormat,
+        PngCompressionLevel,
+        TgaRleCompression,
+        IncludeDisabledMeshSections,
+        SelectedAnimatedTextureFormat
     );
 }

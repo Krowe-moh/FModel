@@ -1,16 +1,20 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CUE4Parse_Conversion.Textures;
+using CUE4Parse_Conversion.Textures.Paper2D;
+using CUE4Parse_Conversion.Dto;
 using CUE4Parse.FileProvider.Objects;
 using CUE4Parse.GameTypes.Borderlands3.Assets.Exports;
 using CUE4Parse.GameTypes.Borderlands4.Assets.Exports;
 using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
 using CUE4Parse.GameTypes.LegoBatman.Assets;
+using CUE4Parse.GameTypes.Nascar.Assets.Exports;
 using CUE4Parse.GameTypes.RED.Assets.Exports;
 using CUE4Parse.GameTypes.SMG.UE4.Assets.Exports.Wwise;
 using CUE4Parse.GameTypes.SMG.UE4.Assets.Objects;
@@ -27,11 +31,15 @@ using CUE4Parse.UE4.Assets.Exports.Criware.Media;
 using CUE4Parse.UE4.Assets.Exports.CustomizableObject;
 using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.Engine.Font;
+using CUE4Parse.UE4.Assets.Exports.Flash;
 using CUE4Parse.UE4.Assets.Exports.Fmod;
 using CUE4Parse.UE4.Assets.Exports.FMod;
 using CUE4Parse.UE4.Assets.Exports.Foliage;
 using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
+using CUE4Parse.UE4.Assets.Exports.HairStrands;
+using CUE4Parse.UE4.Assets.Exports.Houdini;
 using CUE4Parse.UE4.Assets.Exports.Internationalization;
+using CUE4Parse.UE4.Assets.Exports.Paper2D;
 using CUE4Parse.UE4.Assets.Exports.LevelSequence;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.Material.Editor;
@@ -57,6 +65,7 @@ using CUE4Parse.Utils;
 using FModel.Framework;
 using FModel.Services;
 using FModel.Settings;
+using FModel.Views.Resources.Controls;
 using Serilog;
 using SkiaSharp;
 using Svg.Skia;
@@ -113,6 +122,13 @@ public class GameFileViewModel(GameFile asset) : ViewModel
         {
             SetProperty(ref _assetActions, value);
         }
+    }
+
+    private string _embeddedFileExtensions = string.Empty;
+    public string EmbeddedFileExtensions
+    {
+        get => _embeddedFileExtensions;
+        private set => SetProperty(ref _embeddedFileExtensions, value);
     }
 
     private ImageSource _previewImage;
@@ -181,6 +197,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             Resolved |= EResolveCompute.Preview;
             return Task.CompletedTask;
         }
+
         if (Asset.NameWithoutExtension.EndsWith("_BuiltData"))
         {
             AssetCategory = EAssetCategory.BuildData;
@@ -214,10 +231,14 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                     or USoundAtomConfig or UAtomDspBusSetting or UAtomRackBase => EAssetFamily.Criware,
 
                 UAkAudioType or UAkAssetData or UAkAssetPlatformData or UAkMediaAssetData
-                    or UAkMediaAsset or UWwiseAssetLibrary or UExternalSource or UExternalSourceBank => EAssetFamily.Wwise,
+                    or UAkMediaAsset or UWwiseAssetLibrary or UWwiseAssetLibraryGroup or UExternalSource or UExternalSourceBank => EAssetFamily.Wwise,
 
                 UFMODEvent or UFMODBank or UFMODBankLookup or UFMODBus
                     or UFMODSnapshot or UFMODSnapshotReverb or UFMODVCA => EAssetFamily.FMod,
+
+                UHoudiniAsset or UHoudiniStaticMesh => EAssetFamily.Houdini,
+
+                UPaperTileMap or UPaperTileLayer or UPaperTileSet or UPaperSprite or UPaperFlipbook => EAssetFamily.Paper2D,
 
                 _ => EAssetFamily.None,
             };
@@ -227,20 +248,27 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 URigVMBlueprintGeneratedClass => (EAssetCategory.RigVMBlueprintGeneratedClass, EBulkType.Code),
                 UAnimBlueprintGeneratedClass => (EAssetCategory.AnimBlueprintGeneratedClass, EBulkType.Code),
                 UWidgetBlueprintGeneratedClass => (EAssetCategory.WidgetBlueprintGeneratedClass, EBulkType.Code),
-                UBlueprintGeneratedClass or UFunction => (EAssetCategory.BlueprintGeneratedClass, EBulkType.Code),
+                UFunction => (EAssetCategory.BlueprintGeneratedClass, EBulkType.Code),
+                UBlueprintGeneratedClass => (EAssetCategory.BlueprintGeneratedClass, EBulkType.Code | EBulkType.Worlds),
+
                 UUserDefinedEnum => (EAssetCategory.UserDefinedEnum, EBulkType.None),
                 UUserDefinedStruct => (EAssetCategory.UserDefinedStruct, EBulkType.Code),
                 UBlueprintCore => (EAssetCategory.Blueprint, EBulkType.Code),
                 UClassCookedMetaData or UStructCookedMetaData or UEnumCookedMetaData => (EAssetCategory.CookedMetaData, EBulkType.None),
 
                 UStaticMesh => (EAssetCategory.StaticMesh, EBulkType.Meshes),
+                UHoudiniStaticMesh => (EAssetCategory.StaticMesh, EBulkType.Meshes),
                 USkeletalMesh => (EAssetCategory.SkeletalMesh, EBulkType.Meshes),
                 UChaosClothAsset => (EAssetCategory.ChaosClothAsset, EBulkType.Meshes),
                 UCustomizableObject => (EAssetCategory.CustomizableObject, EBulkType.None),
                 UNaniteDisplacedMesh => (EAssetCategory.NaniteDisplacedMesh, EBulkType.None),
                 UGeometryCollection => (EAssetCategory.GeometryCollection, EBulkType.Meshes),
+                UGroomAsset or UGroomBindingAsset => (EAssetCategory.GroomAsset, EBulkType.None),
 
-                UTexture => (EAssetCategory.Texture, EBulkType.Textures),
+                UHoudiniAsset => (EAssetCategory.Data, EBulkType.None),
+
+                UTexture or UPaperSprite => (EAssetCategory.Texture, EBulkType.Textures),
+                UPaperFlipbook => (EAssetCategory.AnimatedTexture, EBulkType.Textures),
 
                 UMaterialInterface => (EAssetCategory.Material, EBulkType.None),
                 UMaterialInterfaceEditorOnlyData => (EAssetCategory.MaterialEditorData, EBulkType.None),
@@ -277,7 +305,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 UFMODBank or UAkAudioBank or UAtomSoundBank or USoundAtomCueSheet
                     or UAkInitBank or USQEXSEADSoundBank => (EAssetCategory.SoundBank, EBulkType.Audio),
 
-                UWwiseAssetLibrary or UAtomSoundBase or USoundBase or UAkMediaAssetData
+                UWwiseAssetLibrary or UWwiseAssetLibraryGroup or UAtomSoundBase or USoundBase or UAkMediaAssetData
                     or UExternalSource or UExternalSourceBank or UAkMediaAsset => (EAssetCategory.Audio, EBulkType.Audio),
 
                 UAkAudioType => (EAssetCategory.Data, EBulkType.None),
@@ -287,6 +315,8 @@ public class GameFileViewModel(GameFile asset) : ViewModel
 
                 UNiagaraSystem or UNiagaraScriptBase or UParticleSystem => (EAssetCategory.Particle, EBulkType.None),
 
+                USwfMovie => (EAssetCategory.Flash, EBulkType.None),
+
                 // Game specific assets below
                 UBorderlandsDialogObject when GameVersion is EGame.GAME_Borderlands3 => (EAssetCategory.Borderlands, EBulkType.None), // Borderlands 3;
                 UGbxGraphAsset or UDialogScriptData or UDialogPerformanceData when GameVersion is EGame.GAME_Borderlands4 or EGame.GAME_Borderlands3 => (EAssetCategory.Borderlands, EBulkType.Audio), // Borderlands 4; Borderlands 3;
@@ -294,34 +324,66 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 UWubAudioEvent or UWubDialogueEvent when GameVersion is EGame.GAME_LEGOBatmanLegacyoftheDarkKnight => (EAssetCategory.LegoBatman, EBulkType.Audio), // Lego Batman: Legacy of the Dark Knight;
                 UREDBinaryObject => (EAssetCategory.ArcSys, EBulkType.None), // Arc System Works games;
                 UOrpheusBank or UOrpheusEvent => (EAssetCategory.GothamKnights, EBulkType.Audio), // Gotham Knights;
+                UIRMesh => (EAssetCategory.Nascar, EBulkType.Meshes), // iRacing games;
+                UPaperTileMap when GameVersion is EGame.GAME_DeadByDaylight => (EAssetCategory.DeadByDaylight, EBulkType.Worlds), // DBD; UPaperTileMap isn't game specific, its use is just non typical
 
                 _ => (EAssetCategory.All, EBulkType.None),
             };
 
+            var obj = pointer.Object.Value;
+            if (EmbeddedFilesDto.Supports(dummy))
+            {
+                var files = new EmbeddedFilesDto(obj).Files;
+                EmbeddedFileExtensions = string.Join(", ", files.Select(file => "." + file.Extension).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(extension => extension, StringComparer.OrdinalIgnoreCase));
+                if (files.Count > 0)
+                    AssetActions |= EBulkType.EmbeddedFiles;
+            }
+
             switch (AssetCategory)
             {
-                case EAssetCategory.Texture when pointer.Object.Value is UTexture texture:
+                case EAssetCategory.Texture:
                 {
                     if (!resolve.HasFlag(EResolveCompute.Preview))
                         break;
 
-                    if (pointer.Object.Value is UTexture2DArray textureArray && textureArray.GetFirstMip() is { SizeZ: > 1 } firstMip)
+                    if (obj is UTexture2DArray textureArray && textureArray.GetFirstMip() is { SizeZ: > 1 } firstMip)
                         NumTextures = firstMip.SizeZ;
 
-                    var img = texture.Decode(MaxPreviewSize, UserSettings.Default.CurrentDir.TexturePlatform);
+                    var options = UserSettings.GetExportOptions();
+                    var img = obj switch
+                    {
+                        UTexture texture => texture.Decode(MaxPreviewSize, options),
+                        UPaperSprite sprite => sprite.Decode(options),
+                        _ => null
+                    };
                     if (img != null)
                     {
                         using var bitmap = img.ToSkBitmap();
                         using var image = bitmap.Encode(SKEncodedImageFormat.Png, 100);
                         SetPreviewImage(image);
                     }
+                    else
+                    {
+                        Resolved |= EResolveCompute.Preview;
+                    }
+
+                    break;
+                }
+                case EAssetCategory.AnimatedTexture when obj is UPaperFlipbook flipbook:
+                {
+                    if (!resolve.HasFlag(EResolveCompute.Preview))
+                        break;
+
+                    var preview = ImageAnimation.CreateThumbnail(flipbook, UserSettings.GetExportOptions(), MaxPreviewSize);
+                    Application.Current.Dispatcher.InvokeAsync(() => PreviewImage = preview);
+                    if (preview == null) Resolved |= EResolveCompute.Preview;
                     break;
                 }
                 case EAssetCategory.ItemDefinitionBase:
                     if (!resolve.HasFlag(EResolveCompute.Preview))
                         break;
 
-                    if (pointer.Object.Value is UItemDefinitionBase itemDef)
+                    if (obj is UItemDefinitionBase itemDef)
                     {
                         if (LookupPreview(itemDef.DataList)) break;
 
@@ -338,7 +400,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                                     !icon.TryLoad<UTexture2D>(out var texture))
                                     continue;
 
-                                var img = texture.Decode(MaxPreviewSize, UserSettings.Default.CurrentDir.TexturePlatform);
+                                var img = texture.Decode(MaxPreviewSize, UserSettings.GetExportOptions());
                                 if (img == null) return false;
 
                                 using var bitmap = img.ToSkBitmap();
@@ -359,7 +421,6 @@ public class GameFileViewModel(GameFile asset) : ViewModel
 
     private Task ResolveByExtensionAsync(EResolveCompute resolve)
     {
-        Resolved |= EResolveCompute.Preview;
         var lowercaseExtension = Asset.Extension.ToLowerInvariant();
 
         AssetFamily = lowercaseExtension switch
@@ -367,6 +428,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             "acb" or "acf" or "adx" or "awb" or "hca" or "usm" => EAssetFamily.Criware,
             "bnk" or "pck" or "wem" => EAssetFamily.Wwise,
             "bank" or "fsb" => EAssetFamily.FMod,
+            "hda" or "hip" => EAssetFamily.Houdini,
             _ => EAssetFamily.None,
         };
 
@@ -443,11 +505,10 @@ public class GameFileViewModel(GameFile asset) : ViewModel
             case "bmp":
             case "svg":
             {
-                Resolved |= ~EResolveCompute.Preview;
                 AssetCategory = EAssetCategory.Texture;
                 AssetActions = EBulkType.Textures;
                 if (!resolve.HasFlag(EResolveCompute.Preview))
-                    break;
+                    return Task.CompletedTask;
 
                 return Task.Run(() =>
                 {
@@ -480,10 +541,12 @@ public class GameFileViewModel(GameFile asset) : ViewModel
 
                     using var image = bitmap.Encode(lowercaseExtension == "jpg" ? SKEncodedImageFormat.Jpeg : SKEncodedImageFormat.Png, 100);
                     SetPreviewImage(image);
-
                     bitmap.Dispose();
                 });
             }
+            case "swf":
+                AssetCategory = EAssetCategory.Flash;
+                break;
             // Game specific extensions below
             case "ace" when GameVersion is EGame.GAME_Borderlands3:
             case "ncs" when GameVersion is EGame.GAME_Borderlands4:
@@ -505,6 +568,7 @@ public class GameFileViewModel(GameFile asset) : ViewModel
                 break;
         }
 
+        Resolved |= EResolveCompute.Preview;
         return Task.CompletedTask;
     }
 
@@ -512,14 +576,12 @@ public class GameFileViewModel(GameFile asset) : ViewModel
     {
         using var ms = new MemoryStream(data.ToArray());
         ms.Position = 0;
-
         var bitmap = new BitmapImage();
         bitmap.BeginInit();
         bitmap.CacheOption = BitmapCacheOption.OnLoad;
         bitmap.StreamSource = ms;
         bitmap.EndInit();
         bitmap.Freeze();
-
         Application.Current.Dispatcher.InvokeAsync(() => PreviewImage = bitmap);
     }
 
@@ -532,7 +594,6 @@ public class GameFileViewModel(GameFile asset) : ViewModel
         _previewCts?.Cancel();
         _previewCts = new CancellationTokenSource();
         var token = _previewCts.Token;
-
         Task.Delay(100, token).ContinueWith(t =>
         {
             if (t.IsCanceled) return;

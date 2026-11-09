@@ -149,7 +149,8 @@
                     </MenuItem>
                 </MenuItem>
                 <MenuItem Header="Views">
-                    <MenuItem Header="3D Viewer" Command="{Binding MenuCommand}" CommandParameter="Views_3dViewer">
+                    <MenuItem Header="3D Viewer" Command="{Binding MenuCommand}" CommandParameter="Views_3dViewer"
+                              IsEnabled="{Binding CanOpenSnooper, Source={x:Static viewModels:SnooperViewModel.Instance}}">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16">
                                 <Canvas Width="24" Height="24">
@@ -382,6 +383,7 @@
                             <Separator Grid.Row="1" Style="{StaticResource CustomSeparator}" Margin="0" />
                             <controls:FolderTree Grid.Row="2" x:Name="AssetsFolderName"
                                                  Style="{StaticResource AssetsFolderListBox}"
+                                                 IsTextSearchEnabled="False"
                                                  Folders="{Binding CUE4Parse.AssetsFolder}"
                                                  ItemsSource="{Binding CUE4Parse.AssetsFolder.VisibleFolders}"
                                                  SelectedItem="{Binding CUE4Parse.AssetsFolder.SelectedFolder, Mode=TwoWay}"
@@ -422,6 +424,7 @@
                         <DockPanel>
 
                             <inputs:SearchTextBox DockPanel.Dock="Top" x:Name="AssetsSearchTextBox"
+                                                  Watermark="Filter assets in current folder..."
                                                   Text="{Binding CUE4Parse.AssetsFolder.SelectedFolder.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                   ClearButtonClick="OnClearFilterClick" />
 
@@ -509,6 +512,7 @@
                                     </Grid.ColumnDefinitions>
 
                                     <inputs:SearchTextBox x:Name="AssetsExplorerSearch" Grid.Column="0"
+                                                          Watermark="Filter assets in current folder..."
                                                           Text="{Binding CUE4Parse.AssetsFolder.SelectedFolder.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                           ClearButtonClick="OnClearFilterClick" />
 
@@ -808,6 +812,19 @@
                            HorizontalAlignment="Right" VerticalAlignment="Stretch"
                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
                 <StackPanel Orientation="Horizontal">
+                    <StatusBarItem Margin="0 0 10 0" Padding="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                        <StatusBarItem.Style>
+                            <Style TargetType="StatusBarItem">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PendingRequest, Source={x:Static viewModels:SnooperViewModel.Instance}}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StatusBarItem.Style>
+                        <TextBlock VerticalAlignment="Center" Text="{Binding PendingRequest.DisplayText, Source={x:Static viewModels:SnooperViewModel.Instance}, Mode=OneWay, StringFormat={}{0}: double-click one}" />
+                    </StatusBarItem>
+
                     <StatusBarItem Margin="0 0 10 0"
                                    Padding="0"
                                    HorizontalContentAlignment="Stretch"

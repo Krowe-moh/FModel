@@ -12,7 +12,6 @@ using FModel.Extensions.Themes;
 using FModel.Framework;
 using FModel.ViewModels;
 using FModel.ViewModels.ApiEndpoints.Models;
-using FModel.Views.Snooper;
 using Newtonsoft.Json;
 
 namespace FModel.Settings;
@@ -21,6 +20,8 @@ public sealed class UserSettings : ViewModel
 {
     public static UserSettings Default { get; set; }
 #if DEBUG
+    public bool SuppressViewerLogs { get; set; }
+
     public static readonly string FilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FModel", "AppSettings_Debug.json");
 #else
     public static readonly string FilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FModel", "AppSettings.json");
@@ -69,7 +70,11 @@ public sealed class UserSettings : ViewModel
             Default.SaveEmbeddedMaterials,
             Default.SaveMorphTargets,
             Default.SocketExportFormat,
-            Default.CompressionFormat
+            Default.CompressionFormat,
+            Default.PngCompressionLevel,
+            Default.TgaRleCompression,
+            Default.IncludeDisabledMeshSections,
+            Default.AnimatedTextureExportFormat
         );
     }
 
@@ -276,13 +281,6 @@ public sealed class UserSettings : ViewModel
         set => SetProperty(ref _convertAudioOnBulkExport, value);
     }
 
-    private bool _mergeEditorOnlyDataExports = false;
-    public bool MergeEditorOnlyDataExports
-    {
-        get => _mergeEditorOnlyDataExports;
-        set => SetProperty(ref _mergeEditorOnlyDataExports, value);
-    }
-
     private bool _decompileLua;
     public bool DecompileLua
     {
@@ -438,6 +436,13 @@ public sealed class UserSettings : ViewModel
         set => SetProperty(ref _exportData, value);
     }
 
+    private Hotkey _exportEmbeddedFiles = new(Key.None);
+    public Hotkey ExportEmbeddedFiles
+    {
+        get => _exportEmbeddedFiles;
+        set => SetProperty(ref _exportEmbeddedFiles, value);
+    }
+
     private Hotkey _exportProperties = new(Key.None);
     public Hotkey ExportProperties
     {
@@ -501,6 +506,13 @@ public sealed class UserSettings : ViewModel
         set => SetProperty(ref _naniteMeshExportFormat, value);
     }
 
+    private bool _includeDisabledMeshSections;
+    public bool IncludeDisabledMeshSections
+    {
+        get => _includeDisabledMeshSections;
+        set => SetProperty(ref _includeDisabledMeshSections, value);
+    }
+
     private EMeshQuality _meshQuality = EMeshQuality.Highest;
     public EMeshQuality MeshQuality
     {
@@ -508,7 +520,7 @@ public sealed class UserSettings : ViewModel
         set => SetProperty(ref _meshQuality, value);
     }
 
-    private EMaterialDepth _materialExportFormat = EMaterialDepth.TopLayerOnly;
+    private EMaterialDepth _materialExportFormat = EMaterialDepth.AllLayers;
     public EMaterialDepth MaterialExportFormat
     {
         get => _materialExportFormat;
@@ -522,11 +534,32 @@ public sealed class UserSettings : ViewModel
         set => SetProperty(ref _textureExportFormat, value);
     }
 
+    private EAnimatedTextureFormat _animatedTextureExportFormat = EAnimatedTextureFormat.Png;
+    public EAnimatedTextureFormat AnimatedTextureExportFormat
+    {
+        get => _animatedTextureExportFormat;
+        set => SetProperty(ref _animatedTextureExportFormat, value);
+    }
+
     private int _textureQuality = 100;
     public int TextureQuality
     {
         get => _textureQuality;
         set => SetProperty(ref _textureQuality, value);
+    }
+
+    private int _pngCompressionLevel = 3;
+    public int PngCompressionLevel
+    {
+        get => _pngCompressionLevel;
+        set => SetProperty(ref _pngCompressionLevel, Math.Clamp(value, 0, 9));
+    }
+
+    private bool _tgaRleCompression = true;
+    public bool TgaRleCompression
+    {
+        get => _tgaRleCompression;
+        set => SetProperty(ref _tgaRleCompression, value);
     }
 
     private ESocketFormat _socketExportFormat = ESocketFormat.Bone;
@@ -562,13 +595,6 @@ public sealed class UserSettings : ViewModel
     {
         get => _animateWithRotationOnly;
         set => SetProperty(ref _animateWithRotationOnly, value);
-    }
-
-    private Camera.WorldMode _cameraMode = Camera.WorldMode.Arcball;
-    public Camera.WorldMode CameraMode
-    {
-        get => _cameraMode;
-        set => SetProperty(ref _cameraMode, value);
     }
 
     private int _previewMaxTextureSize = 1024;
